@@ -1,1 +1,161 @@
-/* You can add global styles to this file, and also import other style files */
+// ═══ Design Tokens ═════════════════════════════════════════════════════════
+$primary:        #7c3aed;
+$primary-dark:   #5b21b6;
+$secondary:      #f59e0b;
+$success:        #10b981;
+$danger:         #ef4444;
+$warning:        #f59e0b;
+$info:           #3b82f6;
+$light:          #f8fafc;
+$dark:           #0f172a;
+
+$body-bg:        #f1f5f9;
+$body-color:     #1e293b;
+$card-border-radius: 1rem;
+$border-radius:      0.75rem;
+$border-radius-lg:   1rem;
+$btn-border-radius:  0.625rem;
+
+$font-family-sans-serif: 'Inter', system-ui, -apple-system, sans-serif;
+$font-size-base: 0.9375rem;
+
+$box-shadow:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+$box-shadow-lg: 0 10px 40px rgba(124,58,237,0.12);
+
+// ═══ Bootstrap ═════════════════════════════════════════════════════════════
+@import 'bootstrap/scss/bootstrap';
+@import 'bootstrap-icons/font/bootstrap-icons';
+
+// ═══ Google Fonts ══════════════════════════════════════════════════════════
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+// ═══ Globals ═══════════════════════════════════════════════════════════════
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: $font-family-sans-serif;
+  background: $body-bg;
+  color: $body-color;
+  -webkit-font-smoothing: antialiased;
+}
+
+// ── Number grid ─────────────────────────────────────────────────────────────
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+}
+
+.number-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+
+  &--available {
+    background: #fff;
+    border-color: #e2e8f0;
+    color: $body-color;
+    &:hover { border-color: $primary; color: $primary; transform: scale(1.08); }
+  }
+
+  &--selected {
+    background: $primary;
+    border-color: $primary;
+    color: #fff;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.3);
+  }
+
+  &--reserved {
+    background: #fef3c7;
+    border-color: #fde68a;
+    color: #92400e;
+    cursor: not-allowed;
+  }
+
+  &--paid, &--pending_payment {
+    background: #d1fae5;
+    border-color: #a7f3d0;
+    color: #065f46;
+    cursor: not-allowed;
+  }
+
+  &--winner {
+    background: $secondary;
+    border-color: #d97706;
+    color: #fff;
+    animation: winner-pulse 1.5s ease-in-out infinite;
+  }
+
+  &--blocked, &--cancelled {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes winner-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
+}
+
+// ── Cards ────────────────────────────────────────────────────────────────────
+.card-glass {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: $card-border-radius;
+  box-shadow: $box-shadow-lg;
+}
+
+// ── Gradient hero ────────────────────────────────────────────────────────────
+.hero-gradient {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 60%, #2d1b69 100%);
+}
+
+// ── Status badges ────────────────────────────────────────────────────────────
+.badge-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 0.3em 0.7em;
+  border-radius: 9999px;
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+.sidebar {
+  width: 260px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+  color: rgba(255,255,255,0.85);
+
+  .nav-link {
+    color: rgba(255,255,255,0.7);
+    border-radius: 0.5rem;
+    padding: 0.6rem 1rem;
+    transition: all 0.15s;
+    &:hover, &.active {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+  }
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+.text-gradient {
+  background: linear-gradient(135deg, #7c3aed, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cursor-pointer { cursor: pointer; }
