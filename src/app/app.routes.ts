@@ -3,7 +3,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { organizerGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
-  // PUBLIC
+  // ── PUBLIC ──────────────────────────────────────────────────────────────
   {
     path: '',
     loadComponent: () => import('./shared/layouts/public-layout').then(m => m.PublicLayout),
@@ -19,7 +19,7 @@ export const routes: Routes = [
     ],
   },
 
-  // AUTH
+  // ── AUTH ─────────────────────────────────────────────────────────────────
   {
     path: 'auth',
     loadComponent: () => import('./shared/layouts/auth-layout').then(m => m.AuthLayout),
@@ -36,7 +36,7 @@ export const routes: Routes = [
     ],
   },
 
-  // DASHBOARD (organizer)
+  // ── DASHBOARD (ORGANIZER) ────────────────────────────────────────────────
   {
     path: 'dashboard',
     canActivate: [authGuard, organizerGuard],
@@ -51,8 +51,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/organizer/raffle-list/raffle-list').then(m => m.RaffleList),
       },
       {
-        path: 'rifas/nueva',
-        loadComponent: () => import('./features/organizer/raffle-form/raffle-form').then(m => m.RaffleForm),
+        path: 'reservas',
+        loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
+      },
+      {
+        path: 'pagos',
+        loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
+      },
+      {
+        path: 'metodos-pago',
+        loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
       },
     ],
   },

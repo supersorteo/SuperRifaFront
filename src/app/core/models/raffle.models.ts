@@ -35,6 +35,13 @@ export interface ImageInfo {
   displayOrder: number;
 }
 
+export interface RaffleListImage {
+  url: string;
+  altText?: string;
+  coverImage: boolean;
+  displayOrder: number;
+}
+
 export interface OrganizerPublicInfo {
   displayName: string;
   avatarUrl?: string;
@@ -85,10 +92,13 @@ export interface RaffleListItem {
   id: string;
   title: string;
   slug: string;
+  prizeName?: string;
+  participantCount: number;
   publicationStatus: string;
   operationalStatus: string;
   totalNumbers: number;
   pricePerNumber: number;
   drawDateTime?: string;
   createdAt: string;
+  images: RaffleListImage[];
 }

@@ -36,7 +36,17 @@ export class RaffleService {
     return this.http.post<RaffleListItem>(`${environment.apiUrl}/organizer/raffles/${id}/pause`, {});
   }
 
+  delete(id: string) {
+    return this.http.delete<void>(`${environment.apiUrl}/organizer/raffles/${id}`);
+  }
+
   executeDraw(id: string) {
     return this.http.post<unknown>(`${environment.apiUrl}/organizer/raffles/${id}/draw/execute`, {});
+  }
+
+  uploadImages(id: string, files: File[]) {
+    const fd = new FormData();
+    files.forEach(f => fd.append('files', f, f.name));
+    return this.http.post<void>(`${environment.apiUrl}/organizer/raffles/${id}/images`, fd);
   }
 }
