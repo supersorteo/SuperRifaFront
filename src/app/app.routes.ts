@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
-import { organizerGuard } from './core/guards/role.guard';
+import { adminGuard, organizerGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   // ── PUBLIC ──────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ export const routes: Routes = [
     ],
   },
 
-  // ── DASHBOARD (ORGANIZER) ────────────────────────────────────────────────
+  // ── DASHBOARD (ORGANIZER + ADMIN) ────────────────────────────────────────
   {
     path: 'dashboard',
     canActivate: [authGuard, organizerGuard],
@@ -61,6 +61,23 @@ export const routes: Routes = [
       {
         path: 'metodos-pago',
         loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
+      },
+    ],
+  },
+
+  // ── ADMIN ────────────────────────────────────────────────────────────────
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/admin/admin-layout/admin-layout').then(m => m.AdminLayout),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./features/admin/admin-home/admin-home').then(m => m.AdminHome),
+      },
+      {
+        path: 'organizadores',
+        loadComponent: () => import('./features/admin/admin-organizers/admin-organizers').then(m => m.AdminOrganizers),
       },
     ],
   },

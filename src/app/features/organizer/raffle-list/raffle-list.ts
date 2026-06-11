@@ -4,10 +4,11 @@ import { RaffleService } from '../../../core/services/raffle.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { RaffleListImage, RaffleListItem } from '../../../core/models/raffle.models';
 import { RaffleFormModal } from '../raffle-form-modal/raffle-form-modal';
+import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
 
 @Component({
   selector: 'app-raffle-list',
-  imports: [RouterLink, CurrencyArPipe, RaffleFormModal],
+  imports: [RouterLink, CurrencyArPipe, RaffleFormModal, RaffleActionsMenu],
   host: { '(document:click)': 'closeAllMenus()' },
   template: `
     <app-raffle-form-modal
@@ -135,45 +136,13 @@ import { RaffleFormModal } from '../raffle-form-modal/raffle-form-modal';
                     <i class="bi bi-box-arrow-up-right"></i>
                   </a>
 
-                  <div class="action-dropdown">
-                    <button class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1"
-                            (click)="toggleMenu($event, r.id)"
-                            aria-haspopup="true"
-                            [attr.aria-expanded]="openMenuId() === r.id"
-                            aria-label="Más acciones">
-                      <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-
-                    @if (openMenuId() === r.id) {
-                      <div class="action-menu" role="menu">
-                        <button class="action-item" role="menuitem"
-                                (click)="publish(r)"
-                                [class.action-item--disabled]="r.publicationStatus !== 'DRAFT'">
-                          <i class="bi bi-send text-primary"></i>
-                          <span>Publicar</span>
-                        </button>
-                        <button class="action-item" role="menuitem"
-                                (click)="pause(r)"
-                                [class.action-item--disabled]="r.publicationStatus !== 'PUBLISHED'">
-                          <i class="bi bi-pause-circle" style="color:#f59e0b"></i>
-                          <span>Pausar</span>
-                        </button>
-                        <div class="action-divider"></div>
-                        <button class="action-item" role="menuitem"
-                                (click)="draw(r)"
-                                [class.action-item--disabled]="r.operationalStatus === 'FINISHED' || r.operationalStatus === 'CANCELLED'">
-                          <i class="bi bi-stars" style="color:#ec4899"></i>
-                          <span>Ejecutar sorteo</span>
-                        </button>
-                        <div class="action-divider"></div>
-                        <button class="action-item" role="menuitem"
-                                (click)="remove(r)">
-                          <i class="bi bi-trash" style="color:#dc2626"></i>
-                          <span>Eliminar rifa</span>
-                        </button>
-                      </div>
-                    }
-                  </div>
+                  <app-raffle-actions-menu
+                    [raffle]="r"
+                    [isOpen]="openMenuId() === r.id"
+                    (toggled)="toggleMenu($event, r.id)"
+                    (changed)="onRaffleChanged($event)"
+                    (deleted)="onRaffleDeleted($event)"
+                    (drawExecuted)="load()" />
                 </div>
               </div>
             </div>
@@ -205,7 +174,7 @@ export class RaffleList implements OnInit, OnDestroy {
     }
   }
 
-  private load(): void {
+  protected load(): void {
     this.loading.set(true);
     this.raffleService.getMyRaffles().subscribe({
       next: r => { this.raffles.set(r); this.loading.set(false); },
@@ -215,6 +184,16 @@ export class RaffleList implements OnInit, OnDestroy {
 
   protected onRaffleCreated(): void { this.load(); }
 
+  protected onRaffleChanged(updated: RaffleListItem): void {
+    this.openMenuId.set(null);
+    this.raffles.update(list => list.map(x => x.id === updated.id ? updated : x));
+  }
+
+  protected onRaffleDeleted(id: string): void {
+    this.openMenuId.set(null);
+    this.raffles.update(list => list.filter(x => x.id !== id));
+  }
+
   protected closeAllMenus(): void {
     this.openMenuId.set(null);
   }
@@ -222,37 +201,6 @@ export class RaffleList implements OnInit, OnDestroy {
   protected toggleMenu(event: MouseEvent, id: string): void {
     event.stopPropagation();
     this.openMenuId.update(curr => curr === id ? null : id);
-  }
-
-  protected publish(r: RaffleListItem): void {
-    this.openMenuId.set(null);
-    if (r.publicationStatus !== 'DRAFT') return;
-    this.raffleService.publish(r.id).subscribe({
-      next: updated => this.raffles.update(list => list.map(x => x.id === updated.id ? updated : x)),
-    });
-  }
-
-  protected pause(r: RaffleListItem): void {
-    this.openMenuId.set(null);
-    if (r.publicationStatus !== 'PUBLISHED') return;
-    this.raffleService.pause(r.id).subscribe({
-      next: updated => this.raffles.update(list => list.map(x => x.id === updated.id ? updated : x)),
-    });
-  }
-
-  protected draw(r: RaffleListItem): void {
-    this.openMenuId.set(null);
-    if (r.operationalStatus === 'FINISHED' || r.operationalStatus === 'CANCELLED') return;
-    if (!confirm(`¿Confirmar sorteo de "${r.title}"?\n\nEsta acción no se puede deshacer.`)) return;
-    this.raffleService.executeDraw(r.id).subscribe();
-  }
-
-  protected remove(r: RaffleListItem): void {
-    this.openMenuId.set(null);
-    if (!confirm(`¿Eliminar la rifa "${r.title}"?\n\nSe eliminará la rifa, sus números, reservas y la página pública asociada. Esta acción no se puede deshacer.`)) return;
-    this.raffleService.delete(r.id).subscribe({
-      next: () => this.raffles.update(list => list.filter(x => x.id !== r.id)),
-    });
   }
 
   protected currentImage(r: RaffleListItem): RaffleListImage {

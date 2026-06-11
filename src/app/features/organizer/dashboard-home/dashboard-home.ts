@@ -5,10 +5,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { RaffleListItem } from '../../../core/models/raffle.models';
 import { RaffleFormModal } from '../raffle-form-modal/raffle-form-modal';
+import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
 
 @Component({
   selector: 'app-dashboard-home',
-  imports: [RouterLink, CurrencyArPipe, RaffleFormModal],
+  imports: [RouterLink, CurrencyArPipe, RaffleFormModal, RaffleActionsMenu],
+  host: { '(document:click)': 'closeAllMenus()' },
   template: `
     <!-- Modal nueva rifa -->
     <app-raffle-form-modal
@@ -126,10 +128,20 @@ import { RaffleFormModal } from '../raffle-form-modal/raffle-form-modal';
                     <td class="d-none d-md-table-cell text-muted small">{{ r.totalNumbers }}</td>
                     <td class="d-none d-md-table-cell text-muted small">{{ r.pricePerNumber | currencyAr }}</td>
                     <td class="text-end pe-3">
-                      <a [routerLink]="['/rifa', r.slug]" target="_blank"
-                         class="btn btn-sm btn-outline-secondary rounded-3 px-2">
-                        <i class="bi bi-eye"></i>
-                      </a>
+                      <div class="d-flex align-items-center justify-content-end gap-1">
+                        <a [routerLink]="['/rifa', r.slug]" target="_blank"
+                           class="btn btn-sm btn-outline-secondary rounded-3 px-2"
+                           aria-label="Ver rifa pública">
+                          <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                        <app-raffle-actions-menu
+                          [raffle]="r"
+                          [isOpen]="openMenuId() === r.id"
+                          (toggled)="toggleMenu($event, r.id)"
+                          (changed)="onRaffleChanged($event)"
+                          (deleted)="onRaffleDeleted($event)"
+                          (drawExecuted)="load()" />
+                      </div>
                     </td>
                   </tr>
                 }
@@ -145,9 +157,10 @@ export class DashboardHome implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly raffleService = inject(RaffleService);
 
-  protected readonly loading = signal(true);
-  protected readonly raffles = signal<RaffleListItem[]>([]);
-  protected readonly showModal = signal(false);
+  protected readonly loading    = signal(true);
+  protected readonly raffles    = signal<RaffleListItem[]>([]);
+  protected readonly showModal  = signal(false);
+  protected readonly openMenuId = signal<string | null>(null);
 
   protected readonly firstName = computed(() => {
     const parts = this.auth.user()?.fullName?.split(' ') ?? [];
@@ -160,7 +173,7 @@ export class DashboardHome implements OnInit {
 
   ngOnInit(): void { this.load(); }
 
-  private load(): void {
+  protected load(): void {
     this.raffleService.getMyRaffles().subscribe({
       next: r => { this.raffles.set(r); this.loading.set(false); },
       error: () => this.loading.set(false),
@@ -168,6 +181,23 @@ export class DashboardHome implements OnInit {
   }
 
   protected onRaffleCreated(): void { this.load(); }
+
+  protected closeAllMenus(): void { this.openMenuId.set(null); }
+
+  protected toggleMenu(event: MouseEvent, id: string): void {
+    event.stopPropagation();
+    this.openMenuId.update(curr => curr === id ? null : id);
+  }
+
+  protected onRaffleChanged(updated: RaffleListItem): void {
+    this.openMenuId.set(null);
+    this.raffles.update(list => list.map(x => x.id === updated.id ? updated : x));
+  }
+
+  protected onRaffleDeleted(id: string): void {
+    this.openMenuId.set(null);
+    this.raffles.update(list => list.filter(x => x.id !== id));
+  }
 
   protected formatDate(dt: string): string {
     return new Date(dt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });

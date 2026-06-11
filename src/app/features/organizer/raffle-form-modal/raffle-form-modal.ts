@@ -4,350 +4,327 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RaffleService } from '../../../core/services/raffle.service';
 
 interface ImgPreview { file: File; url: string; }
+type RaffleModalStep = 'details' | 'prize';
 
 @Component({
   selector: 'app-raffle-form-modal',
   imports: [ReactiveFormsModule, DecimalPipe],
   template: `
     @if (open()) {
-      <!-- Backdrop -->
-      <div class="modal-backdrop fade show" (click)="onClose()" style="z-index:1050"></div>
+      <div class="modal-backdrop fade show" (click)="closeCurrentStep()" style="z-index:1050"></div>
 
-      <!-- Modal dialog -->
       <div class="modal d-block"
            style="z-index:1055;overflow-x:hidden;overflow-y:auto"
-           role="dialog" aria-modal="true" aria-labelledby="rfm-title">
+           role="dialog" aria-modal="true" [attr.aria-labelledby]="step() === 'details' ? 'rfm-details-title' : 'rfm-prize-title'">
         <div class="w-100 mx-auto px-2 px-md-3 animate-fade-up"
-             style="max-width:980px;padding-top:1.5rem;padding-bottom:1.5rem">
-          <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+             [style.maxWidth]="step() === 'details' ? '860px' : '980px'"
+             style="padding-top:1.5rem;padding-bottom:1.5rem">
 
-            <!-- ── Header gradient ── -->
-            <div class="hero-gradient text-white px-4 py-4">
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                  <div class="rounded-3 d-flex align-items-center justify-content-center"
-                       style="width:42px;height:42px;background:rgba(255,255,255,.15)">
-                    <i class="bi bi-ticket-perforated-fill text-warning fs-5"></i>
+          @if (step() === 'details') {
+            <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+              <div class="hero-gradient text-white px-4 py-4">
+                <div class="d-flex justify-content-between align-items-center gap-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                         style="width:44px;height:44px;background:rgba(255,255,255,.14)">
+                      <i class="bi bi-ticket-perforated-fill text-warning fs-5"></i>
+                    </div>
+                    <div>
+                      <div class="small text-uppercase opacity-75 fw-semibold" style="letter-spacing:.1em">Paso 1 de 2</div>
+                      <h4 class="fw-black mb-0" id="rfm-details-title">Datos de la rifa</h4>
+                      <p class="mb-0 opacity-75 small">Definí la información principal antes de cargar el premio.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 class="fw-black mb-0" id="rfm-title">Nueva Rifa</h4>
-                    <p class="mb-0 opacity-75 small">Completá los datos y publicá tu rifa</p>
+                  <button class="btn btn-link text-white opacity-75 p-2" (click)="resetAndClose()" aria-label="Cerrar">
+                    <i class="bi bi-x-lg fs-5"></i>
+                  </button>
+                </div>
+              </div>
+
+              @if (error()) {
+                <div class="alert alert-danger rounded-0 border-0 border-start border-danger border-4 mb-0 py-2 px-4 small d-flex align-items-center gap-2">
+                  <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>{{ error() }}
+                </div>
+              }
+
+              <form [formGroup]="detailsForm" novalidate>
+                <div class="p-4 p-lg-5">
+                  <div class="row g-4">
+                    <div class="col-lg-7">
+                      <div class="form-floating mb-3">
+                        <input id="rfm-title" type="text" class="form-control rounded-3"
+                               formControlName="title" placeholder=" "
+                               [class.is-invalid]="showInvalid(detailsForm, 'title')">
+                        <label for="rfm-title">Nombre de la rifa *</label>
+                        <div class="invalid-feedback">Este campo es obligatorio.</div>
+                      </div>
+
+                      <div class="form-floating mb-3">
+                        <textarea id="rfm-description" class="form-control rounded-3"
+                                  formControlName="description"
+                                  placeholder=" " style="height:120px"></textarea>
+                        <label for="rfm-description">Descripción</label>
+                      </div>
+
+                      <div class="rounded-4 p-4" style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                          <i class="bi bi-info-circle-fill" style="color:#ea580c"></i>
+                          <span class="fw-semibold" style="color:#9a3412">Sobre el sorteo</span>
+                        </div>
+                        <p class="small mb-0" style="color:#7c2d12">
+                          La rifa se crea en modo manual y con participación de números pagados. La forma de ejecución se define al momento de lanzar el sorteo desde las acciones.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                      <div class="rounded-4 p-4 h-100" style="background:#f8fafc;border:1px solid #e2e8f0">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                          <div class="rounded-3 d-flex align-items-center justify-content-center"
+                               style="width:34px;height:34px;background:#e0e7ff;color:#4338ca">
+                            <i class="bi bi-sliders"></i>
+                          </div>
+                          <span class="fw-bold">Configuración</span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                          <input id="rfm-totalNumbers" type="number" class="form-control rounded-3"
+                                 formControlName="totalNumbers" placeholder=" " min="2"
+                                 [class.is-invalid]="showInvalid(detailsForm, 'totalNumbers')">
+                          <label for="rfm-totalNumbers">Cantidad de números / participantes *</label>
+                          <div class="invalid-feedback">Debe ser al menos 2.</div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                          <input id="rfm-price" type="number" class="form-control rounded-3"
+                                 formControlName="pricePerNumber" placeholder=" " min="1"
+                                 [class.is-invalid]="showInvalid(detailsForm, 'pricePerNumber')">
+                          <label for="rfm-price">Precio por número *</label>
+                          <div class="invalid-feedback">Debe ser mayor que 0.</div>
+                        </div>
+
+                        <div class="form-floating mb-4">
+                          <input id="rfm-drawDateTime" type="datetime-local" class="form-control rounded-3"
+                                 formControlName="drawDateTime" placeholder=" "
+                                 [class.is-invalid]="showInvalid(detailsForm, 'drawDateTime')">
+                          <label for="rfm-drawDateTime">Fecha de ejecución *</label>
+                          <div class="invalid-feedback">Este campo es obligatorio.</div>
+                        </div>
+
+                        <div class="rounded-4 p-3" style="background:linear-gradient(135deg,#ede9fe,#fce7f3)">
+                          <div class="small text-uppercase fw-semibold mb-2" style="letter-spacing:.08em;color:#6d28d9">Resumen</div>
+                          <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-muted">Cantidad</span>
+                            <span class="fw-semibold">{{ detailsForm.get('totalNumbers')?.value ?? 0 }}</span>
+                          </div>
+                          <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-muted">Precio</span>
+                            <span class="fw-semibold">$ {{ detailsForm.get('pricePerNumber')?.value ?? 0 | number }}</span>
+                          </div>
+                          <div class="border-top pt-2 mt-2 d-flex justify-content-between align-items-center">
+                            <span class="small fw-semibold">Recaudación potencial</span>
+                            <span class="fw-black text-gradient">$ {{ potentialRevenue() | number }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <button class="btn btn-link text-white opacity-75 p-2"
-                        (click)="onClose()" aria-label="Cerrar">
-                  <i class="bi bi-x-lg fs-5"></i>
+              </form>
+
+              <div class="d-flex justify-content-between align-items-center gap-3 px-4 py-3"
+                   style="background:#f8fafc;border-top:1px solid #e2e8f0">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-3" (click)="resetAndClose()">
+                  Cancelar
+                </button>
+                <button type="button" class="btn btn-gradient px-5 rounded-3 fw-semibold"
+                        (click)="goToPrizeStep()">
+                  Continuar al premio <i class="bi bi-arrow-right ms-2"></i>
                 </button>
               </div>
             </div>
+          }
 
-            <!-- ── Error banner ── -->
-            @if (error()) {
-              <div class="alert alert-danger rounded-0 border-0 border-start border-danger border-4 mb-0 py-2 px-4 small d-flex align-items-center gap-2">
-                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>{{ error() }}
+          @if (step() === 'prize') {
+            <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+              <div class="hero-gradient text-white px-4 py-4">
+                <div class="d-flex justify-content-between align-items-center gap-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                         style="width:44px;height:44px;background:rgba(255,255,255,.14)">
+                      <i class="bi bi-trophy-fill text-warning fs-5"></i>
+                    </div>
+                    <div>
+                      <div class="small text-uppercase opacity-75 fw-semibold" style="letter-spacing:.1em">Paso 2 de 2</div>
+                      <h4 class="fw-black mb-0" id="rfm-prize-title">Premio e imágenes</h4>
+                      <p class="mb-0 opacity-75 small">Completá el premio antes de crear la rifa.</p>
+                    </div>
+                  </div>
+                  <button class="btn btn-link text-white opacity-75 p-2" (click)="backToDetails()" aria-label="Volver">
+                    <i class="bi bi-arrow-left fs-5"></i>
+                  </button>
+                </div>
               </div>
-            }
 
-            <!-- ── Body ── -->
-            <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-              <div class="row g-0">
+              @if (error()) {
+                <div class="alert alert-danger rounded-0 border-0 border-start border-danger border-4 mb-0 py-2 px-4 small d-flex align-items-center gap-2">
+                  <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>{{ error() }}
+                </div>
+              }
 
-                <!-- ═══ Columna izquierda ═══ -->
-                <div class="col-lg-7 p-4">
-
-                  <!-- Información básica -->
-                  <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="rounded-2 d-flex align-items-center justify-content-center"
-                         style="width:28px;height:28px;background:#ede9fe">
-                      <i class="bi bi-info-circle-fill text-primary" style="font-size:.75rem"></i>
+              <form [formGroup]="prizeForm" novalidate>
+                <div class="row g-0">
+                  <div class="col-lg-6 p-4 p-lg-5">
+                    <div class="form-floating mb-3">
+                      <input id="rfm-prizeName" type="text" class="form-control rounded-3"
+                             formControlName="prizeName" placeholder=" "
+                             [class.is-invalid]="showInvalid(prizeForm, 'prizeName')">
+                      <label for="rfm-prizeName">Nombre del premio *</label>
+                      <div class="invalid-feedback">Este campo es obligatorio.</div>
                     </div>
-                    <span class="fw-bold small text-uppercase" style="letter-spacing:.07em;color:#64748b">Información básica</span>
-                  </div>
 
-                  <div class="form-floating mb-3">
-                    <input id="rfm-title-field" type="text" class="form-control rounded-3"
-                           formControlName="title" placeholder=" "
-                           [class.is-invalid]="t('title') && form.get('title')?.invalid">
-                    <label for="rfm-title-field">Título de la rifa *</label>
-                    <div class="invalid-feedback">El título es requerido</div>
-                  </div>
-
-                  <div class="form-floating mb-4">
-                    <textarea id="rfm-desc" class="form-control rounded-3"
-                              formControlName="description"
-                              placeholder=" " style="height:80px"></textarea>
-                    <label for="rfm-desc">Descripción (opcional)</label>
-                  </div>
-
-                  <!-- Premio -->
-                  <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="rounded-2 d-flex align-items-center justify-content-center"
-                         style="width:28px;height:28px;background:#fef9c3">
-                      <i class="bi bi-trophy-fill" style="font-size:.75rem;color:#d97706"></i>
+                    <div class="form-floating mb-3">
+                      <textarea id="rfm-prizeDescription" class="form-control rounded-3"
+                                formControlName="prizeDescription"
+                                placeholder=" " style="height:110px"></textarea>
+                      <label for="rfm-prizeDescription">Descripción del premio</label>
                     </div>
-                    <span class="fw-bold small text-uppercase" style="letter-spacing:.07em;color:#64748b">Premio</span>
-                  </div>
 
-                  <div class="form-floating mb-3">
-                    <input id="rfm-prize" type="text" class="form-control rounded-3"
-                           formControlName="prizeName" placeholder=" "
-                           [class.is-invalid]="t('prizeName') && form.get('prizeName')?.invalid">
-                    <label for="rfm-prize">Nombre del premio *</label>
-                    <div class="invalid-feedback">Requerido</div>
-                  </div>
+                    <div class="form-floating">
+                      <input id="rfm-prizeValue" type="number" class="form-control rounded-3"
+                             formControlName="prizeEstimatedValue" placeholder=" " min="0">
+                      <label for="rfm-prizeValue">Valor estimado (opcional)</label>
+                    </div>
 
-                  <div class="row g-3 mb-4">
-                    <div class="col-sm-6">
-                      <div class="form-floating">
-                        <input id="rfm-prize-val" type="number" class="form-control rounded-3"
-                               formControlName="prizeEstimatedValue" placeholder=" " min="0">
-                        <label for="rfm-prize-val">Valor estimado (ARS)</label>
+                    <div class="rounded-4 p-4 mt-4" style="background:#f8fafc;border:1px solid #e2e8f0">
+                      <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-lightbulb-fill text-warning"></i>
+                        <span class="fw-semibold">Sobre el valor estimado</span>
                       </div>
-                    </div>
-                    <div class="col-sm-6">
-                      <div class="form-floating">
-                        <input id="rfm-prize-short" type="text" class="form-control rounded-3"
-                               formControlName="prizeDescription" placeholder=" ">
-                        <label for="rfm-prize-short">Descripción breve</label>
-                      </div>
+                      <p class="small text-muted mb-0">
+                        No afecta el sorteo ni el cobro. Solo sirve como dato comercial para mostrar cuánto vale el premio.
+                      </p>
                     </div>
                   </div>
 
-                  <!-- Imágenes -->
-                  <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                      <div class="rounded-2 d-flex align-items-center justify-content-center"
-                           style="width:28px;height:28px;background:#ecfeff">
-                        <i class="bi bi-images" style="font-size:.75rem;color:#0891b2"></i>
+                  <div class="col-lg-6 p-4 p-lg-5" style="background:#f8fafc;border-left:1px solid #e2e8f0">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                      <div>
+                        <div class="fw-bold">Imágenes del premio *</div>
+                        <div class="small text-muted">Subí al menos una imagen para completar la publicación.</div>
                       </div>
-                      <span class="fw-bold small text-uppercase" style="letter-spacing:.07em;color:#64748b">Imágenes del premio</span>
-                    </div>
-                    <span class="badge rounded-pill"
-                          [style.background]="previews().length >= 5 ? '#fef2f2' : '#ede9fe'"
-                          [style.color]="previews().length >= 5 ? '#dc2626' : '#4f46e5'"
-                          style="font-size:.7rem;font-weight:600">
-                      {{ previews().length }}/5
-                    </span>
-                  </div>
-
-                  <!-- Input file siempre presente en DOM (oculto) -->
-                  <input #fileInput type="file" accept="image/*" multiple class="d-none"
-                         (change)="onFilesSelected($event)">
-
-                  <!-- Upload zone (visible solo cuando quedan slots) -->
-                  @if (previews().length < 5) {
-                    <div class="rounded-3 p-4 text-center mb-3 cursor-pointer"
-                         style="border:2px dashed #c7d2fe;background:linear-gradient(135deg,#f5f3ff,#fdf4ff);transition:border-color .2s"
-                         (click)="fileInput.click()"
-                         (dragover)="$event.preventDefault()"
-                         (drop)="onDrop($event)">
-                      <div class="d-flex align-items-center justify-content-center rounded-circle mx-auto mb-3"
-                           style="width:52px;height:52px;background:linear-gradient(135deg,#ede9fe,#fce7f3)">
-                        <i class="bi bi-cloud-arrow-up fs-4 text-primary"></i>
-                      </div>
-                      <p class="fw-semibold mb-1 text-primary">Hacé clic o arrastrá imágenes aquí</p>
-                      <p class="text-muted small mb-0">JPG, PNG, WebP · Máx 2 MB · Hasta 5 imágenes</p>
-                    </div>
-                  }
-
-                  <!-- Image carousel + thumbnails -->
-                  @if (previews().length > 0) {
-                    <!-- Main preview -->
-                    <div class="rounded-3 overflow-hidden position-relative mb-2"
-                         style="height:200px;background:#0f172a">
-                      <img [src]="previews()[activeImg()].url"
-                           class="w-100 h-100" style="object-fit:contain"
-                           [alt]="'Imagen ' + (activeImg() + 1)">
-
-                      @if (previews().length > 1) {
-                        <button type="button"
-                                class="btn btn-sm position-absolute d-flex align-items-center justify-content-center rounded-circle"
-                                style="top:50%;left:10px;transform:translateY(-50%);width:34px;height:34px;background:rgba(0,0,0,.6);color:#fff;border:none"
-                                (click)="activeImg.update(i => i - 1)"
-                                [disabled]="activeImg() === 0"
-                                aria-label="Imagen anterior">
-                          <i class="bi bi-chevron-left"></i>
-                        </button>
-                        <button type="button"
-                                class="btn btn-sm position-absolute d-flex align-items-center justify-content-center rounded-circle"
-                                style="top:50%;right:10px;transform:translateY(-50%);width:34px;height:34px;background:rgba(0,0,0,.6);color:#fff;border:none"
-                                (click)="activeImg.update(i => i + 1)"
-                                [disabled]="activeImg() === previews().length - 1"
-                                aria-label="Imagen siguiente">
-                          <i class="bi bi-chevron-right"></i>
-                        </button>
-                      }
-
-                      <span class="badge position-absolute"
-                            style="bottom:10px;right:10px;background:rgba(0,0,0,.7);font-size:.7rem">
-                        {{ activeImg() + 1 }} / {{ previews().length }}
+                      <span class="badge rounded-pill"
+                            [style.background]="previews().length === 0 ? '#fef2f2' : '#ede9fe'"
+                            [style.color]="previews().length === 0 ? '#dc2626' : '#4f46e5'"
+                            style="font-size:.72rem;font-weight:700">
+                        {{ previews().length }}/5
                       </span>
                     </div>
 
-                    <!-- Thumbnails row -->
-                    <div class="d-flex gap-2 flex-wrap mb-1">
-                      @for (p of previews(); track $index) {
-                        <div class="position-relative cursor-pointer"
-                             style="width:56px;height:56px"
-                             (click)="activeImg.set($index)">
-                          <img [src]="p.url" class="w-100 h-100 rounded-2"
-                               style="object-fit:cover;transition:outline .1s"
-                               [style.outline]="activeImg() === $index ? '3px solid #4f46e5' : '2px solid #e2e8f0'"
-                               [alt]="'Miniatura ' + ($index + 1)">
+                    <input #fileInput type="file" accept="image/*" multiple class="d-none"
+                           (change)="onFilesSelected($event)">
+
+                    @if (previews().length < 5) {
+                      <div class="rounded-4 p-4 text-center mb-3 cursor-pointer"
+                           style="border:2px dashed #c7d2fe;background:linear-gradient(135deg,#eff6ff,#fdf2f8)"
+                           (click)="fileInput.click()"
+                           (dragover)="$event.preventDefault()"
+                           (drop)="onDrop($event)">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle mx-auto mb-3"
+                             style="width:56px;height:56px;background:linear-gradient(135deg,#dbeafe,#fce7f3)">
+                          <i class="bi bi-cloud-arrow-up fs-4 text-primary"></i>
+                        </div>
+                        <p class="fw-semibold mb-1 text-primary">Hacé click o arrastrá imágenes aquí</p>
+                        <p class="text-muted small mb-0">JPG, PNG, WebP · Máx 2 MB · Hasta 5 imágenes</p>
+                      </div>
+                    }
+
+                    @if (previews().length > 0) {
+                      <div class="rounded-4 overflow-hidden position-relative mb-3"
+                           style="height:260px;background:#0f172a">
+                        <img [src]="previews()[activeImg()].url"
+                             class="w-100 h-100" style="object-fit:contain"
+                             [alt]="'Imagen ' + (activeImg() + 1)">
+
+                        @if (previews().length > 1) {
                           <button type="button"
-                                  class="position-absolute d-flex align-items-center justify-content-center rounded-circle border-0"
-                                  style="top:-7px;right:-7px;width:20px;height:20px;background:#ef4444;color:#fff;font-size:.6rem;cursor:pointer;padding:0"
-                                  (click)="removeImage($index, $event)"
-                                  [attr.aria-label]="'Eliminar imagen ' + ($index + 1)">
-                            <i class="bi bi-x fw-bold"></i>
+                                  class="btn btn-sm position-absolute d-flex align-items-center justify-content-center rounded-circle"
+                                  style="top:50%;left:12px;transform:translateY(-50%);width:36px;height:36px;background:rgba(0,0,0,.55);color:#fff;border:none"
+                                  (click)="prevPreview()"
+                                  [disabled]="activeImg() === 0"
+                                  aria-label="Imagen anterior">
+                            <i class="bi bi-chevron-left"></i>
                           </button>
-                        </div>
-                      }
-                      @if (previews().length < 5) {
-                        <div class="d-flex align-items-center justify-content-center rounded-2 cursor-pointer"
-                             style="width:56px;height:56px;border:2px dashed #c7d2fe;color:#a5b4fc"
-                             (click)="fileInput.click()"
-                             role="button" aria-label="Agregar imagen">
-                          <i class="bi bi-plus fs-4"></i>
-                        </div>
-                      }
-                    </div>
-                  }
+                          <button type="button"
+                                  class="btn btn-sm position-absolute d-flex align-items-center justify-content-center rounded-circle"
+                                  style="top:50%;right:12px;transform:translateY(-50%);width:36px;height:36px;background:rgba(0,0,0,.55);color:#fff;border:none"
+                                  (click)="nextPreview()"
+                                  [disabled]="activeImg() === previews().length - 1"
+                                  aria-label="Imagen siguiente">
+                            <i class="bi bi-chevron-right"></i>
+                          </button>
+                        }
 
-                </div><!-- /col-left -->
-
-                <!-- ═══ Columna derecha ═══ -->
-                <div class="col-lg-5 p-4" style="background:#f8fafc;border-left:1px solid #e2e8f0">
-
-                  <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="rounded-2 d-flex align-items-center justify-content-center"
-                         style="width:28px;height:28px;background:#e0f2fe">
-                      <i class="bi bi-sliders" style="font-size:.75rem;color:#0284c7"></i>
-                    </div>
-                    <span class="fw-bold small text-uppercase" style="letter-spacing:.07em;color:#64748b">Configuración</span>
-                  </div>
-
-                  <div class="row g-3 mb-3">
-                    <div class="col-6">
-                      <div class="form-floating">
-                        <input id="rfm-nums" type="number" class="form-control rounded-3"
-                               formControlName="totalNumbers" placeholder=" " min="2"
-                               [class.is-invalid]="t('totalNumbers') && form.get('totalNumbers')?.invalid">
-                        <label for="rfm-nums">Cantidad *</label>
-                        <div class="invalid-feedback">Mín 2</div>
-                      </div>
-                    </div>
-                    <div class="col-6">
-                      <div class="form-floating">
-                        <input id="rfm-price" type="number" class="form-control rounded-3"
-                               formControlName="pricePerNumber" placeholder=" " min="1"
-                               [class.is-invalid]="t('pricePerNumber') && form.get('pricePerNumber')?.invalid">
-                        <label for="rfm-price">Precio $ *</label>
-                        <div class="invalid-feedback">Mín $1</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="form-floating mb-3">
-                    <input id="rfm-date" type="datetime-local" class="form-control rounded-3"
-                           formControlName="drawDateTime" placeholder=" ">
-                    <label for="rfm-date">Fecha del sorteo</label>
-                  </div>
-
-                  <!-- Método: card radio buttons -->
-                  <div class="mb-3">
-                    <label class="form-label fw-medium small" style="color:#475569">Método de sorteo</label>
-                    <div class="d-flex gap-2">
-                      @for (opt of drawMethods; track opt.value) {
-                        <label class="flex-fill cursor-pointer">
-                          <input type="radio" class="d-none" formControlName="drawMethod" [value]="opt.value">
-                          <div class="rounded-3 p-3 text-center border-2 border fw-semibold small"
-                               style="transition:all .15s;cursor:pointer"
-                               [style.background]="isDrawMethod(opt.value) ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#fff'"
-                               [style.color]="isDrawMethod(opt.value) ? '#fff' : '#475569'"
-                               [style.borderColor]="isDrawMethod(opt.value) ? '#4f46e5' : '#e2e8f0'">
-                            <i [class]="'bi ' + opt.icon + ' d-block mb-1 fs-5'"></i>
-                            <span>{{ opt.label }}</span>
-                          </div>
-                        </label>
-                      }
-                    </div>
-                  </div>
-
-                  <!-- Política: card radio buttons -->
-                  <div class="mb-4">
-                    <label class="form-label fw-medium small" style="color:#475569">¿Quiénes participan?</label>
-                    <div class="d-flex flex-column gap-2">
-                      @for (pol of drawPolicies; track pol.value) {
-                        <label class="cursor-pointer">
-                          <input type="radio" class="d-none" formControlName="drawPolicy" [value]="pol.value">
-                          <div class="d-flex align-items-center gap-3 rounded-3 p-3 border-2 border"
-                               style="transition:all .15s;cursor:pointer"
-                               [style.background]="isDrawPolicy(pol.value) ? '#ede9fe' : '#fff'"
-                               [style.borderColor]="isDrawPolicy(pol.value) ? '#4f46e5' : '#e2e8f0'">
-                            <i [class]="'bi ' + pol.icon + ' fs-5'"
-                               [style.color]="isDrawPolicy(pol.value) ? '#4f46e5' : '#94a3b8'"></i>
-                            <div>
-                              <div class="fw-semibold small" [style.color]="isDrawPolicy(pol.value) ? '#3730a3' : '#475569'">{{ pol.label }}</div>
-                              <div class="small" style="color:#94a3b8;font-size:.72rem">{{ pol.hint }}</div>
-                            </div>
-                          </div>
-                        </label>
-                      }
-                    </div>
-                  </div>
-
-                  <!-- Revenue summary -->
-                  <div class="rounded-3 p-4" style="background:linear-gradient(135deg,#ede9fe,#fce7f3)">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                      <i class="bi bi-graph-up-arrow text-primary"></i>
-                      <span class="fw-bold small">Resumen</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-1">
-                      <span class="small text-muted">Números</span>
-                      <span class="fw-semibold small">{{ form.get('totalNumbers')?.value ?? 0 }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-1">
-                      <span class="small text-muted">Precio</span>
-                      <span class="fw-semibold small">$ {{ form.get('pricePerNumber')?.value ?? 0 | number }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                      <span class="small text-muted">Imágenes</span>
-                      <span class="fw-semibold small">{{ previews().length }} / 5</span>
-                    </div>
-                    <div class="border-top pt-3" style="border-color:rgba(79,70,229,.2)!important">
-                      <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold small">Recaudación potencial</span>
-                        <span class="fw-black text-gradient" style="font-size:1.2rem">
-                          $ {{ potentialRevenue() | number }}
+                        <span class="badge position-absolute"
+                              style="bottom:12px;right:12px;background:rgba(0,0,0,.7);font-size:.72rem">
+                          {{ activeImg() + 1 }} / {{ previews().length }}
                         </span>
                       </div>
-                    </div>
+
+                      <div class="d-flex gap-2 flex-wrap">
+                        @for (p of previews(); track $index) {
+                          <div class="position-relative cursor-pointer" style="width:62px;height:62px"
+                               (click)="activeImg.set($index)">
+                            <img [src]="p.url" class="w-100 h-100 rounded-3"
+                                 style="object-fit:cover"
+                                 [style.outline]="activeImg() === $index ? '3px solid #4f46e5' : '2px solid #e2e8f0'"
+                                 [alt]="'Miniatura ' + ($index + 1)">
+                            <button type="button"
+                                    class="position-absolute d-flex align-items-center justify-content-center rounded-circle border-0"
+                                    style="top:-6px;right:-6px;width:22px;height:22px;background:#ef4444;color:#fff;font-size:.66rem;padding:0"
+                                    (click)="removeImage($index, $event)"
+                                    [attr.aria-label]="'Eliminar imagen ' + ($index + 1)">
+                              <i class="bi bi-x fw-bold"></i>
+                            </button>
+                          </div>
+                        }
+                        @if (previews().length < 5) {
+                          <div class="d-flex align-items-center justify-content-center rounded-3 cursor-pointer"
+                               style="width:62px;height:62px;border:2px dashed #c7d2fe;color:#a5b4fc"
+                               (click)="fileInput.click()"
+                               role="button" aria-label="Agregar imagen">
+                            <i class="bi bi-plus fs-4"></i>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    @if (showImageError()) {
+                      <div class="small text-danger mt-3">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>Debés subir al menos una imagen.
+                      </div>
+                    }
                   </div>
-                </div><!-- /col-right -->
+                </div>
+              </form>
 
-              </div><!-- /row -->
-            </form>
-
-            <!-- ── Footer ── -->
-            <div class="d-flex justify-content-end align-items-center gap-3 px-4 py-3"
-                 style="background:#f8fafc;border-top:1px solid #e2e8f0">
-              <button type="button" class="btn btn-outline-secondary px-4 rounded-3"
-                      (click)="onClose()">
-                Cancelar
-              </button>
-              <button type="button" class="btn btn-gradient px-5 rounded-3 fw-semibold"
-                      (click)="submit()" [disabled]="loading()">
-                @if (loading()) {
-                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                  Creando...
-                } @else {
-                  <i class="bi bi-check-circle-fill me-2"></i>Crear Rifa
-                }
-              </button>
+              <div class="d-flex justify-content-between align-items-center gap-3 px-4 py-3"
+                   style="background:#f8fafc;border-top:1px solid #e2e8f0">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-3" (click)="backToDetails()">
+                  <i class="bi bi-arrow-left me-2"></i>Volver
+                </button>
+                <button type="button" class="btn btn-gradient px-5 rounded-3 fw-semibold"
+                        (click)="submit()" [disabled]="loading()">
+                  @if (loading()) {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    Creando...
+                  } @else {
+                    <i class="bi bi-check-circle-fill me-2"></i>Crear Rifa
+                  }
+                </button>
+              </div>
             </div>
-
-          </div><!-- /modal-content -->
+          }
         </div>
       </div>
     }
@@ -361,40 +338,54 @@ export class RaffleFormModal implements OnDestroy {
   private readonly raffleService = inject(RaffleService);
   private readonly fb = inject(FormBuilder);
 
+  protected readonly step = signal<RaffleModalStep>('details');
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly previews = signal<ImgPreview[]>([]);
   protected readonly activeImg = signal(0);
+  protected readonly imageTouched = signal(false);
 
-  protected readonly drawMethods = [
-    { value: 'MANUAL',    icon: 'bi-hand-index',  label: 'Manual' },
-    { value: 'AUTOMATIC', icon: 'bi-robot',        label: 'Auto' },
-  ];
-  protected readonly drawPolicies = [
-    { value: 'PAID_ONLY',    icon: 'bi-cash-coin',    label: 'Solo pagados', hint: 'Solo números con pago confirmado' },
-    { value: 'ALL_NUMBERS',  icon: 'bi-people-fill',   label: 'Todos',        hint: 'Pagados + reservados entran al sorteo' },
-  ];
+  protected readonly detailsForm = this.fb.group({
+    title: ['', Validators.required],
+    description: [''],
+    totalNumbers: [100, [Validators.required, Validators.min(2)]],
+    pricePerNumber: [1000, [Validators.required, Validators.min(1)]],
+    drawDateTime: ['', Validators.required],
+  });
 
-  protected readonly form = this.fb.group({
-    title:               ['', Validators.required],
-    description:         [''],
-    totalNumbers:        [100, [Validators.required, Validators.min(2)]],
-    pricePerNumber:      [1000, [Validators.required, Validators.min(1)]],
-    drawDateTime:        [''],
-    drawMethod:          ['MANUAL'],
-    drawPolicy:          ['PAID_ONLY'],
-    prizeName:           ['', Validators.required],
-    prizeDescription:    [''],
+  protected readonly prizeForm = this.fb.group({
+    prizeName: ['', Validators.required],
+    prizeDescription: [''],
     prizeEstimatedValue: [null as number | null],
   });
 
-  protected t(field: string): boolean { return !!this.form.get(field)?.touched; }
-  protected isDrawMethod(v: string): boolean { return this.form.get('drawMethod')?.value === v; }
-  protected isDrawPolicy(v: string): boolean { return this.form.get('drawPolicy')?.value === v; }
+  protected showInvalid(form: ReturnType<FormBuilder['group']>, field: string): boolean {
+    return !!form.get(field)?.touched && !!form.get(field)?.invalid;
+  }
 
   protected potentialRevenue(): number {
-    return ((this.form.get('totalNumbers')?.value ?? 0) as number) *
-           ((this.form.get('pricePerNumber')?.value ?? 0) as number);
+    return ((this.detailsForm.get('totalNumbers')?.value ?? 0) as number) *
+           ((this.detailsForm.get('pricePerNumber')?.value ?? 0) as number);
+  }
+
+  protected goToPrizeStep(): void {
+    this.detailsForm.markAllAsTouched();
+    if (this.detailsForm.invalid) return;
+    this.error.set('');
+    this.step.set('prize');
+  }
+
+  protected backToDetails(): void {
+    this.error.set('');
+    this.step.set('details');
+  }
+
+  protected closeCurrentStep(): void {
+    if (this.step() === 'prize') {
+      this.backToDetails();
+      return;
+    }
+    this.resetAndClose();
   }
 
   protected onFilesSelected(event: Event): void {
@@ -408,64 +399,92 @@ export class RaffleFormModal implements OnDestroy {
     if (event.dataTransfer?.files) this.addFiles(event.dataTransfer.files);
   }
 
-  private addFiles(fileList: FileList): void {
-    const remaining = 5 - this.previews().length;
-    const toAdd = Array.from(fileList).slice(0, remaining).filter(f => {
-      if (f.size > 2 * 1024 * 1024) { this.error.set(`"${f.name}" supera el límite de 2 MB`); return false; }
-      if (!f.type.startsWith('image/')) return false;
-      return true;
-    });
-    if (toAdd.length > 0) {
-      this.previews.update(prev => [...prev, ...toAdd.map(file => ({ file, url: URL.createObjectURL(file) }))]);
-      this.error.set('');
-    }
-  }
-
   protected removeImage(index: number, event: MouseEvent): void {
     event.stopPropagation();
     URL.revokeObjectURL(this.previews()[index].url);
     this.previews.update(list => list.filter((_, i) => i !== index));
-    this.activeImg.update(i => Math.min(i, Math.max(0, this.previews().length - 1)));
+    const nextLength = this.previews().length;
+    this.activeImg.update(i => Math.min(i, Math.max(0, nextLength - 1)));
   }
 
-  protected onClose(): void {
-    this.form.reset({ totalNumbers: 100, pricePerNumber: 1000, drawMethod: 'MANUAL', drawPolicy: 'PAID_ONLY' });
+  protected prevPreview(): void {
+    this.activeImg.update(i => Math.max(0, i - 1));
+  }
+
+  protected nextPreview(): void {
+    this.activeImg.update(i => Math.min(this.previews().length - 1, i + 1));
+  }
+
+  protected showImageError(): boolean {
+    return this.imageTouched() && this.previews().length === 0;
+  }
+
+  protected resetAndClose(): void {
+    this.detailsForm.reset({
+      title: '',
+      description: '',
+      totalNumbers: 100,
+      pricePerNumber: 1000,
+      drawDateTime: '',
+    });
+    this.prizeForm.reset({
+      prizeName: '',
+      prizeDescription: '',
+      prizeEstimatedValue: null,
+    });
     this.revokeAll();
     this.error.set('');
+    this.step.set('details');
+    this.imageTouched.set(false);
     this.closed.emit();
   }
 
   protected submit(): void {
-    this.form.markAllAsTouched();
-    if (this.form.invalid) return;
+    this.prizeForm.markAllAsTouched();
+    this.imageTouched.set(true);
+
+    if (this.detailsForm.invalid) {
+      this.step.set('details');
+      this.detailsForm.markAllAsTouched();
+      return;
+    }
+
+    if (this.prizeForm.invalid || this.previews().length === 0) {
+      return;
+    }
+
     this.loading.set(true);
     this.error.set('');
-    const raw = this.form.getRawValue();
+
+    const details = this.detailsForm.getRawValue();
+    const prize = this.prizeForm.getRawValue();
 
     this.raffleService.create({
-      title:               raw.title!,
-      description:         raw.description || undefined,
-      totalNumbers:        raw.totalNumbers!,
-      pricePerNumber:      raw.pricePerNumber!,
-      drawDateTime:        raw.drawDateTime || undefined,
-      drawMethod:          raw.drawMethod as 'MANUAL' | 'AUTOMATIC',
-      drawPolicy:          raw.drawPolicy as 'PAID_ONLY' | 'ALL_NUMBERS',
-      prizeName:           raw.prizeName || undefined,
-      prizeDescription:    raw.prizeDescription || undefined,
-      prizeEstimatedValue: raw.prizeEstimatedValue ?? undefined,
+      title: details.title!,
+      description: details.description || undefined,
+      totalNumbers: details.totalNumbers!,
+      pricePerNumber: details.pricePerNumber!,
+      drawDateTime: details.drawDateTime || undefined,
+      drawMethod: 'MANUAL',
+      drawPolicy: 'PAID_ONLY',
+      prizeName: prize.prizeName || undefined,
+      prizeDescription: prize.prizeDescription || undefined,
+      prizeEstimatedValue: prize.prizeEstimatedValue ?? undefined,
     }).subscribe({
       next: raffle => {
         const files = this.previews().map(p => p.file);
-        if (files.length > 0) {
-          this.raffleService.uploadImages(raffle.id, files).subscribe({
-            complete: () => { this.loading.set(false); this.onClose(); this.created.emit(); },
-            error: () => { this.loading.set(false); this.onClose(); this.created.emit(); },
-          });
-        } else {
-          this.loading.set(false);
-          this.onClose();
-          this.created.emit();
-        }
+        this.raffleService.uploadImages(raffle.id, files).subscribe({
+          complete: () => {
+            this.loading.set(false);
+            this.resetAndClose();
+            this.created.emit();
+          },
+          error: () => {
+            this.loading.set(false);
+            this.resetAndClose();
+            this.created.emit();
+          },
+        });
       },
       error: (e: { message?: string }) => {
         this.error.set(e.message ?? 'Error al crear la rifa');
@@ -474,11 +493,33 @@ export class RaffleFormModal implements OnDestroy {
     });
   }
 
+  private addFiles(fileList: FileList): void {
+    const remaining = 5 - this.previews().length;
+    const toAdd = Array.from(fileList).slice(0, remaining).filter(file => {
+      if (file.size > 2 * 1024 * 1024) {
+        this.error.set(`"${file.name}" supera el límite de 2 MB`);
+        return false;
+      }
+      if (!file.type.startsWith('image/')) return false;
+      return true;
+    });
+
+    if (toAdd.length > 0) {
+      this.previews.update(prev => [
+        ...prev,
+        ...toAdd.map(file => ({ file, url: URL.createObjectURL(file) }))
+      ]);
+      this.error.set('');
+    }
+  }
+
   private revokeAll(): void {
     this.previews().forEach(p => URL.revokeObjectURL(p.url));
     this.previews.set([]);
     this.activeImg.set(0);
   }
 
-  ngOnDestroy(): void { this.revokeAll(); }
+  ngOnDestroy(): void {
+    this.revokeAll();
+  }
 }

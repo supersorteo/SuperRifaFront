@@ -33,6 +33,12 @@ export class AuthService {
     );
   }
 
+  adminLogin(username: string, password: string) {
+    return this.http.post<TokenResponse>(`${environment.apiUrl}/auth/admin/login`, { username, password }).pipe(
+      tap(res => this.storeSession(res))
+    );
+  }
+
   register(req: RegisterRequest) {
     return this.http.post<TokenResponse>(`${environment.apiUrl}/auth/register`, req).pipe(
       tap(res => this.storeSession(res))
@@ -40,11 +46,15 @@ export class AuthService {
   }
 
   logout(): void {
+    this.logoutSilent();
+    this.router.navigate(['/']);
+  }
+
+  logoutSilent(): void {
     this.storage.remove(ACCESS_KEY);
     this.storage.remove(REFRESH_KEY);
     this.storage.remove(USER_KEY);
     this._user.set(null);
-    this.router.navigate(['/auth/login']);
   }
 
   getToken(): string | null {
