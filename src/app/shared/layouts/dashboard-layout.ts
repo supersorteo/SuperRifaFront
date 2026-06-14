@@ -42,13 +42,17 @@ import { AuthService } from '../../core/services/auth.service';
              (click)="sidebarOpen.set(false)">
             <i class="bi bi-people"></i>Reservas
           </a>
-          <a class="nav-link" routerLink="/dashboard/pagos" routerLinkActive="active"
-             (click)="sidebarOpen.set(false)">
-            <i class="bi bi-cash-stack"></i>Pagos
-          </a>
           <a class="nav-link" routerLink="/dashboard/metodos-pago" routerLinkActive="active"
              (click)="sidebarOpen.set(false)">
             <i class="bi bi-credit-card"></i>Métodos de pago
+          </a>
+
+          <div class="nav-section mt-2">
+            <span class="nav-section-label">Cuenta</span>
+          </div>
+          <a class="nav-link" routerLink="/dashboard/perfil" routerLinkActive="active"
+             (click)="sidebarOpen.set(false)">
+            <i class="bi bi-person-circle"></i>Mi perfil
           </a>
         </div>
 
@@ -59,8 +63,8 @@ import { AuthService } from '../../core/services/auth.service';
               {{ initial() }}
             </div>
             <div style="min-width:0">
-              <div class="text-white fw-semibold small text-truncate">{{ auth.user()?.fullName }}</div>
-              <div class="text-white-50 small text-truncate" style="font-size:0.72rem">{{ auth.user()?.email }}</div>
+              <div class="text-white fw-semibold small text-truncate">{{ auth.orgUser()?.fullName }}</div>
+              <div class="text-white-50 small text-truncate" style="font-size:0.72rem">{{ auth.orgUser()?.email }}</div>
             </div>
           </div>
           <button class="nav-link w-100 border-0 text-start" (click)="logout()" style="background:none">
@@ -97,10 +101,10 @@ export class DashboardLayout {
 
   protected readonly sidebarOpen = signal(false);
   protected readonly initial = computed(() =>
-    (this.auth.user()?.fullName ?? '?').charAt(0).toUpperCase()
+    (this.auth.orgUser()?.fullName ?? '?').charAt(0).toUpperCase()
   );
   protected readonly firstName = computed(() => {
-    const parts = this.auth.user()?.fullName?.split(' ') ?? [];
+    const parts = this.auth.orgUser()?.fullName?.split(' ') ?? [];
     return parts.length > 0 ? parts[0] : '';
   });
 

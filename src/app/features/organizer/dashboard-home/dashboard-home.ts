@@ -163,7 +163,7 @@ export class DashboardHome implements OnInit {
   protected readonly openMenuId = signal<string | null>(null);
 
   protected readonly firstName = computed(() => {
-    const parts = this.auth.user()?.fullName?.split(' ') ?? [];
+    const parts = this.auth.orgUser()?.fullName?.split(' ') ?? [];
     return parts.length > 0 ? parts[0] : 'organizador';
   });
   protected readonly activeCount   = computed(() => this.raffles().filter(r => r.publicationStatus === 'PUBLISHED').length);

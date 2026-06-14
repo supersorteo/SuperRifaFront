@@ -1,4 +1,4 @@
-import { Component, inject, input, OnChanges, output, signal } from '@angular/core';
+import { Component, inject, input, OnChanges, OnInit, output, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -39,12 +39,19 @@ import { AuthService } from '../../../core/services/auth.service';
 
             <div class="admin-field">
               <label for="adm-pass" class="admin-label">Contraseña</label>
-              <input id="adm-pass"
-                     type="password"
-                     formControlName="password"
-                     class="admin-input"
-                     placeholder="••••••••"
-                     autocomplete="current-password" />
+              <div class="admin-pass-wrap">
+                <input id="adm-pass"
+                       [type]="showPass() ? 'text' : 'password'"
+                       formControlName="password"
+                       class="admin-input admin-input--pass"
+                       placeholder="••••••••"
+                       autocomplete="current-password" />
+                <button type="button" class="admin-eye"
+                        (click)="showPass.set(!showPass())"
+                        [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  <i [class]="showPass() ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
             </div>
 
             <button type="submit"
@@ -117,6 +124,15 @@ import { AuthService } from '../../../core/services/auth.service';
       font-size: .85rem;
     }
     .admin-field { display: flex; flex-direction: column; gap: .35rem; }
+    .admin-pass-wrap { position: relative; }
+    .admin-input--pass { padding-right: 2.8rem; width: 100%; }
+    .admin-eye {
+      position: absolute; right: .1rem; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; color: #64748b;
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border-radius: .4rem; transition: color .15s;
+    }
+    .admin-eye:hover { color: #a5b4fc; }
     .admin-label { font-size: .78rem; font-weight: 600; color: #94a3b8; letter-spacing: .05em; text-transform: uppercase; }
     .admin-input {
       background: rgba(255,255,255,.05);
@@ -159,8 +175,9 @@ export class AdminLoginModal implements OnChanges {
   private readonly router  = inject(Router);
   private readonly fb      = inject(FormBuilder);
 
-  protected readonly loading = signal(false);
-  protected readonly error   = signal<string | null>(null);
+  protected readonly loading  = signal(false);
+  protected readonly error    = signal<string | null>(null);
+  protected readonly showPass = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
     username: ['', Validators.required],
@@ -172,6 +189,7 @@ export class AdminLoginModal implements OnChanges {
       this.form.reset();
       this.error.set(null);
       this.loading.set(false);
+      this.showPass.set(false);
     }
   }
 

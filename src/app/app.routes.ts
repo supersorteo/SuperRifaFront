@@ -13,10 +13,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/public/home/home').then(m => m.Home),
       },
       {
-        path: 'rifa/:slug',
-        loadComponent: () => import('./features/public/raffle-detail/raffle-detail').then(m => m.RaffleDetail),
+        path: 'mis-numeros',
+        loadComponent: () => import('./features/public/my-numbers/my-numbers').then(m => m.MyNumbers),
       },
     ],
+  },
+
+  // ── RAFFLE (standalone, sin navbar de la app) ────────────────────────────
+  {
+    path: 'rifa/:slug',
+    loadComponent: () => import('./features/public/raffle-detail/raffle-detail').then(m => m.RaffleDetail),
   },
 
   // ── AUTH ─────────────────────────────────────────────────────────────────
@@ -52,15 +58,15 @@ export const routes: Routes = [
       },
       {
         path: 'reservas',
-        loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
+        loadComponent: () => import('./features/organizer/reservations-dashboard/reservations-dashboard').then(m => m.ReservationsDashboard),
       },
       {
-        path: 'pagos',
-        loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
+        path: 'perfil',
+        loadComponent: () => import('./features/organizer/profile-edit/profile-edit').then(m => m.ProfileEdit),
       },
       {
         path: 'metodos-pago',
-        loadComponent: () => import('./features/organizer/dashboard-home/dashboard-home').then(m => m.DashboardHome),
+        loadComponent: () => import('./features/organizer/payment-methods/payment-methods').then(m => m.PaymentMethods),
       },
     ],
   },

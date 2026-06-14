@@ -10,8 +10,15 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError(err => {
-      if (err.status === 401) {
-        auth.logout();
+      const isProtectedOrganizerApi = req.url.includes('/api/organizer/');
+      const isProtectedAdminApi = req.url.includes('/api/admin/');
+
+      if (err.status === 401 || ((isProtectedOrganizerApi || isProtectedAdminApi) && err.status === 403)) {
+        if (isProtectedAdminApi) {
+          auth.adminLogout();
+        } else {
+          auth.logoutSilent();
+        }
         router.navigate(['/auth/login']);
       }
       const message = err.error?.message ?? err.statusText ?? 'Error desconocido';

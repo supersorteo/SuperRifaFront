@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -9,6 +9,12 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     <h2 class="fw-bold mb-1 text-center">Bienvenido</h2>
     <p class="text-muted text-center small mb-4">Ingresá a tu cuenta de SuperRifa</p>
+
+    @if (registered()) {
+      <div class="alert alert-success py-2 small" role="status">
+        <i class="bi bi-check-circle-fill me-1"></i>¡Cuenta creada! Ingresá con tus credenciales.
+      </div>
+    }
 
     @if (error()) {
       <div class="alert alert-danger py-2 small" role="alert">
@@ -58,13 +64,17 @@ import { AuthService } from '../../../core/services/auth.service';
   `
 })
 export class Login {
-  private readonly auth = inject(AuthService);
+  protected readonly auth  = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly fb   = inject(FormBuilder);
 
-  protected readonly loading = signal(false);
-  protected readonly error = signal('');
-  protected readonly showPass = signal(false);
+  protected readonly loading    = signal(false);
+  protected readonly error      = signal('');
+  protected readonly showPass   = signal(false);
+  protected readonly registered = signal(
+    this.route.snapshot.queryParamMap.get('registered') === '1'
+  );
 
   protected readonly form = this.fb.group({
     email:    ['', [Validators.required, Validators.email]],
@@ -82,7 +92,7 @@ export class Login {
     this.error.set('');
 
     this.auth.login(this.form.getRawValue() as { email: string; password: string }).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => this.router.navigate([this.auth.isAdmin() ? '/admin' : '/dashboard']),
       error: (e: Error) => {
         this.error.set(e.message);
         this.loading.set(false);

@@ -29,7 +29,7 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
           @if (auth.isLoggedIn()) {
             <span class="text-white-50 small me-1">
-              <i class="bi bi-person-circle me-1"></i>{{ auth.user()?.fullName?.split(' ')!.at(0) ?? '' }}
+              <i class="bi bi-person-circle me-1"></i>{{ auth.orgUser()?.fullName?.split(' ')?.at(0) ?? '' }}
             </span>
             <a class="btn btn-sm btn-outline-light px-3 fw-medium" routerLink="/dashboard">
               <i class="bi bi-speedometer2 me-1"></i>Dashboard
@@ -50,7 +50,7 @@ import { AuthService } from '../../core/services/auth.service';
           <div class="border-top border-white border-opacity-25 pt-3 d-flex flex-column gap-2">
             @if (auth.isLoggedIn()) {
               <div class="text-white-50 small px-1">
-                <i class="bi bi-person-circle me-1"></i>{{ auth.user()?.fullName }}
+                <i class="bi bi-person-circle me-1"></i>{{ auth.orgUser()?.fullName }}
               </div>
               <a class="btn btn-outline-light btn-sm w-100 text-start" routerLink="/dashboard"
                  (click)="navOpen.set(false)">

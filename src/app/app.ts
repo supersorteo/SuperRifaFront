@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+import { AuthService } from './core/services/auth.service';
 import { AdminLoginModal } from './features/admin/admin-login-modal/admin-login-modal';
 
 @Component({
@@ -11,12 +12,19 @@ import { AdminLoginModal } from './features/admin/admin-login-modal/admin-login-
   },
 })
 export class App {
+  private readonly auth   = inject(AuthService);
+  private readonly router = inject(Router);
+
   protected readonly showAdminLogin = signal(false);
 
   protected onKeyDown(e: KeyboardEvent): void {
     if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'a') {
       e.preventDefault();
-      this.showAdminLogin.set(true);
+      if (this.auth.isAdmin()) {
+        this.router.navigate(['/admin']);
+      } else {
+        this.showAdminLogin.set(true);
+      }
     }
   }
 }

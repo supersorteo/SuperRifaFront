@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Location } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -29,6 +30,11 @@ import { AuthService } from '../../../core/services/auth.service';
              class="admin-nav-item">
             <i class="bi bi-people-fill"></i><span>Organizadores</span>
           </a>
+
+          <div class="admin-nav-divider"></div>
+          <button class="admin-nav-item admin-nav-item--back" (click)="goBack()">
+            <i class="bi bi-arrow-left-circle"></i><span>Salir del panel</span>
+          </button>
         </nav>
 
         <div class="admin-sidebar__footer">
@@ -53,9 +59,14 @@ import { AuthService } from '../../../core/services/auth.service';
           </button>
           <span class="fw-bold text-white small">Admin</span>
         </div>
-        <button class="btn btn-sm btn-dark border-0 px-2" (click)="logout()" aria-label="Cerrar sesión">
-          <i class="bi bi-box-arrow-right text-danger"></i>
-        </button>
+        <div class="d-flex align-items-center gap-1">
+          <button class="btn btn-sm btn-dark border-0 px-2" (click)="goBack()" aria-label="Salir del panel" title="Salir del panel">
+            <i class="bi bi-arrow-left-circle text-info"></i>
+          </button>
+          <button class="btn btn-sm btn-dark border-0 px-2" (click)="logout()" aria-label="Cerrar sesión">
+            <i class="bi bi-box-arrow-right text-danger"></i>
+          </button>
+        </div>
       </header>
 
       <!-- Mobile sidebar overlay -->
@@ -71,6 +82,10 @@ import { AuthService } from '../../../core/services/auth.service';
                class="admin-nav-item" (click)="mobileOpen.set(false)">
               <i class="bi bi-people-fill"></i><span>Organizadores</span>
             </a>
+            <div class="admin-nav-divider"></div>
+            <button class="admin-nav-item admin-nav-item--back" (click)="goBack(); mobileOpen.set(false)">
+              <i class="bi bi-arrow-left-circle"></i><span>Salir del panel</span>
+            </button>
           </nav>
         </aside>
       }
@@ -151,6 +166,12 @@ import { AuthService } from '../../../core/services/auth.service';
     }
     .admin-sidebar__user-name { font-size: .83rem; font-weight: 600; color: #e2e8f0; }
     .admin-sidebar__user-role { font-size: .7rem; color: #64748b; }
+    .admin-nav-divider { height: 1px; background: rgba(255,255,255,.07); margin: .5rem .85rem; }
+    .admin-nav-item--back {
+      width: 100%; background: transparent; border: none; cursor: pointer; text-align: left;
+      color: #64748b;
+    }
+    .admin-nav-item--back:hover { background: rgba(255,255,255,.06); color: #94a3b8; }
     .admin-sidebar__logout {
       background: transparent; border: none;
       color: #64748b; padding: .35rem; border-radius: .4rem;
@@ -169,13 +190,13 @@ import { AuthService } from '../../../core/services/auth.service';
   `]
 })
 export class AdminLayout {
-  private readonly auth   = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly auth     = inject(AuthService);
+  private readonly location = inject(Location);
 
   protected readonly mobileOpen = signal(false);
 
   protected readonly firstName = computed(() => {
-    const parts = this.auth.user()?.fullName?.split(' ') ?? [];
+    const parts = this.auth.adminUser()?.fullName?.split(' ') ?? [];
     return parts[0] ?? 'Admin';
   });
 
@@ -184,7 +205,10 @@ export class AdminLayout {
   );
 
   protected logout(): void {
-    this.auth.logout();
-    this.router.navigate(['/']);
+    this.auth.adminLogout();
+  }
+
+  protected goBack(): void {
+    this.location.back();
   }
 }

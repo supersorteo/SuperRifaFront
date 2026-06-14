@@ -104,7 +104,7 @@ export class Register {
     this.error.set('');
 
     this.auth.register(this.form.getRawValue() as { fullName: string; email: string; phone: string; password: string }).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => this.router.navigate(['/auth/login'], { queryParams: { registered: '1' } }),
       error: (e: Error) => {
         this.error.set(e.message);
         this.loading.set(false);

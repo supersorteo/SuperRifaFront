@@ -11,8 +11,12 @@ export class WebSocketService {
 
   connect(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    if (this.client) return Promise.resolve();
 
     return import('@stomp/stompjs').then(({ Client }) => {
+      // sockjs-client still expects a Node-style global in some bundling paths
+      (globalThis as typeof globalThis & { global?: typeof globalThis }).global ??= globalThis;
+
       return import('sockjs-client').then(({ default: SockJS }) => {
         this.client = new Client({
           webSocketFactory: () => new SockJS(environment.wsUrl),
