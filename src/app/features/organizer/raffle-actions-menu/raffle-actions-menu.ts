@@ -10,7 +10,7 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
               (click)="onToggle($event)"
               aria-haspopup="true"
               [attr.aria-expanded]="isOpen()"
-              aria-label="Más acciones">
+              aria-label="Mas acciones">
         <i class="bi bi-three-dots-vertical"></i>
       </button>
 
@@ -31,7 +31,7 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
           <div class="action-divider"></div>
           <button class="action-item" role="menuitem"
                   (click)="draw()"
-                  [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED'">
+                  [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED' || raffle().reservedCount <= 0">
             <i class="bi bi-stars" style="color:#ec4899"></i>
             <span>Ejecutar sorteo</span>
           </button>
@@ -47,12 +47,14 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
   `
 })
 export class RaffleActionsMenu {
-  readonly raffle        = input.required<RaffleListItem>();
-  readonly isOpen        = input.required<boolean>();
-  readonly toggled       = output<MouseEvent>();
-  readonly changed       = output<RaffleListItem>();
-  readonly deleted       = output<string>();
-  readonly drawExecuted  = output<void>();
+  readonly raffle = input.required<RaffleListItem>();
+  readonly isOpen = input.required<boolean>();
+  readonly toggled = output<MouseEvent>();
+  readonly changed = output<RaffleListItem>();
+  readonly deleted = output<string>();
+  readonly drawRequested = output<RaffleListItem>();
+  readonly drawFailed = output<string>();
+  readonly drawExecuted = output<void>();
 
   private readonly raffleService = inject(RaffleService);
 
@@ -75,19 +77,27 @@ export class RaffleActionsMenu {
   }
 
   protected draw(): void {
-    const r = this.raffle();
-    if (r.operationalStatus === 'FINISHED' || r.operationalStatus === 'CANCELLED') return;
-    if (!confirm(`¿Confirmar sorteo de "${r.title}"?\n\nEsta acción no se puede deshacer.`)) return;
-    this.raffleService.executeDraw(r.id).subscribe({
+    const raffle = this.raffle();
+    if (raffle.operationalStatus === 'FINISHED' || raffle.operationalStatus === 'CANCELLED') return;
+    if (raffle.reservedCount <= 0) {
+      this.drawFailed.emit('La rifa debe tener al menos un numero reservado antes de ejecutar el sorteo');
+      return;
+    }
+    if (!confirm(`Confirmar sorteo de "${raffle.title}"?\n\nEsta accion no se puede deshacer.`)) return;
+
+    this.drawRequested.emit(raffle);
+    this.raffleService.executeDraw(raffle.id).subscribe({
       next: () => this.drawExecuted.emit(),
+      error: (error: Error) => this.drawFailed.emit(error.message),
     });
   }
 
   protected remove(): void {
-    const r = this.raffle();
-    if (!confirm(`¿Eliminar la rifa "${r.title}"?\n\nSe eliminarán todos sus números, reservas y la página pública. Esta acción no se puede deshacer.`)) return;
-    this.raffleService.delete(r.id).subscribe({
-      next: () => this.deleted.emit(r.id),
+    const raffle = this.raffle();
+    if (!confirm(`Eliminar la rifa "${raffle.title}"?\n\nSe eliminaran todos sus numeros, reservas y la pagina publica. Esta accion no se puede deshacer.`)) return;
+
+    this.raffleService.delete(raffle.id).subscribe({
+      next: () => this.deleted.emit(raffle.id),
     });
   }
 }

@@ -1,16 +1,36 @@
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { RaffleService } from '../../../core/services/raffle.service';
+import { WebSocketService } from '../../../core/services/websocket.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { RaffleListImage, RaffleListItem } from '../../../core/models/raffle.models';
 import { RaffleFormModal } from '../raffle-form-modal/raffle-form-modal';
 import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
+import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/live-draw-overlay';
+import { WinnerReservationModal } from '../../../shared/components/winner-reservation-modal/winner-reservation-modal';
 
 @Component({
   selector: 'app-raffle-list',
-  imports: [RouterLink, CurrencyArPipe, RaffleFormModal, RaffleActionsMenu],
+  imports: [RouterLink, CurrencyArPipe, RaffleFormModal, RaffleActionsMenu, LiveDrawOverlay, WinnerReservationModal],
   host: { '(document:click)': 'closeAllMenus()' },
   template: `
+    <app-live-draw-overlay
+      [open]="liveDrawOpen()"
+      [title]="liveDrawRaffle()?.title || 'Sorteo en curso'"
+      [subtitle]="liveDrawWinner() === null ? 'El ganador se esta definiendo en tiempo real para todos los participantes.' : 'El sorteo finalizo correctamente.'"
+      [countdown]="liveDrawCountdown()"
+      [winnerNumber]="liveDrawWinner()"
+      [winnerName]="liveDrawWinnerName()" />
+
+    <app-winner-reservation-modal
+      [open]="winnerModalOpen()"
+      [raffleId]="winnerModalRaffle()?.id || ''"
+      [raffleSlug]="winnerModalRaffle()?.slug || ''"
+      [winnerName]="winnerModalRaffle()?.winnerName || ''"
+      [winnerPhone]="winnerModalRaffle()?.winnerPhone || ''"
+      (closed)="winnerModalOpen.set(false)" />
+
     <app-raffle-form-modal
       [open]="showModal()"
       (closed)="showModal.set(false)"
@@ -19,7 +39,7 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
       <div>
         <h2 class="fw-black mb-0">Mis Rifas</h2>
-        <p class="text-muted small mb-0">Gestioná todas tus rifas desde aquí</p>
+        <p class="text-muted small mb-0">Gestiona todas tus rifas desde aqui</p>
       </div>
       <button class="btn btn-gradient fw-semibold px-4 rounded-3" (click)="showModal.set(true)">
         <i class="bi bi-plus-circle-fill me-2"></i>Nueva Rifa
@@ -43,8 +63,8 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
              style="width:80px;height:80px;background:linear-gradient(135deg,#ede9fe,#fce7f3)">
           <i class="bi bi-ticket-perforated" style="font-size:2.2rem;color:#4f46e5"></i>
         </div>
-        <h4 class="fw-bold mb-2">Todavía no tenés rifas</h4>
-        <p class="text-muted mb-4">Creá tu primera rifa y empezá a vender números hoy mismo</p>
+        <h4 class="fw-bold mb-2">Todavia no tenes rifas</h4>
+        <p class="text-muted mb-4">Crea tu primera rifa y empieza a vender numeros hoy mismo</p>
         <div>
           <button class="btn btn-gradient fw-semibold px-5 rounded-3" (click)="showModal.set(true)">
             <i class="bi bi-plus-circle-fill me-2"></i>Crear mi primera rifa
@@ -57,13 +77,12 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
       <div class="row g-4">
         @for (r of raffles(); track r.id) {
           <div class="col-md-6 col-xl-4">
-            <div class="card border-0 shadow-sm h-100 card-hover raffle-card-shell">
+            <div class="card border-0 shadow-sm h-100 card-hover raffle-card-shell" [class.raffle-card-shell--finished]="r.operationalStatus === 'FINISHED'">
               <div class="raffle-card-header" [style.background]="cardHeaderGradient(r)">
                 <div class="raffle-card-header__content">
                   <h5 class="raffle-card-header__title" [title]="r.title">{{ r.title }}</h5>
                   <div class="raffle-price-chip">{{ r.pricePerNumber | currencyAr }}</div>
                 </div>
-
               </div>
 
               <div class="card-body pb-3">
@@ -101,14 +120,14 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
                   } @else {
                     <div class="raffle-media-frame__empty">
                       <i class="bi bi-image"></i>
-                      <span>Sin imágenes cargadas</span>
+                      <span>Sin imagenes cargadas</span>
                     </div>
                   }
                 </div>
 
                 <div class="raffle-meta-strip">
                   <div class="raffle-meta-strip__item">
-                    <span class="raffle-meta-strip__label">Números</span>
+                    <span class="raffle-meta-strip__label">Numeros</span>
                     <span class="raffle-meta-strip__value">{{ r.totalNumbers }}</span>
                   </div>
                   <div class="raffle-meta-strip__item">
@@ -116,23 +135,41 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
                     <span class="raffle-meta-strip__value">{{ r.participantCount }}</span>
                   </div>
                   <div class="raffle-meta-strip__item raffle-meta-strip__item--date">
-                    <span class="raffle-meta-strip__label">Ejecución</span>
+                    <span class="raffle-meta-strip__label">Ejecucion</span>
                     <span class="raffle-meta-strip__value">
                       {{ r.drawDateTime ? formatDate(r.drawDateTime) : 'Sin fecha' }}
                     </span>
                   </div>
+                  @if (r.winnerName) {
+                    <div class="raffle-meta-strip__item raffle-meta-strip__item--date">
+                      <span class="raffle-meta-strip__label">Ganador</span>
+                      <button type="button" class="raffle-meta-strip__value raffle-meta-strip__value--button"
+                              (click)="openWinnerDetails($event, r)">
+                        {{ r.winnerName }}@if (r.winnerPhone) { · {{ r.winnerPhone }} }
+                      </button>
+                    </div>
+                  }
                 </div>
               </div>
 
               <div class="card-footer bg-transparent border-top d-flex align-items-center justify-content-between py-2 px-3">
-                <span class="badge-pill" [class]="opBadgeCls(r.operationalStatus)">
-                  {{ opLabel(r.operationalStatus) }}
-                </span>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="badge-pill" [class]="opBadgeCls(r.operationalStatus)">
+                    {{ opLabel(r.operationalStatus) }}
+                  </span>
+                  @if (r.winnerNumber) {
+                    <span class="raffle-winner-chip">
+                      <button type="button" class="raffle-winner-chip__button" (click)="openWinnerDetails($event, r)">
+                        <i class="bi bi-trophy-fill"></i> Ganador: {{ r.winnerNumber }}
+                      </button>
+                    </span>
+                  }
+                </div>
 
                 <div class="d-flex align-items-center gap-1">
                   <a [routerLink]="['/rifa', r.slug]" target="_blank"
                      class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1"
-                     title="Ver rifa pública" aria-label="Ver rifa">
+                     title="Ver rifa publica" aria-label="Ver rifa">
                     <i class="bi bi-box-arrow-up-right"></i>
                   </a>
 
@@ -142,6 +179,8 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
                     (toggled)="toggleMenu($event, r.id)"
                     (changed)="onRaffleChanged($event)"
                     (deleted)="onRaffleDeleted($event)"
+                    (drawRequested)="onDrawRequested($event)"
+                    (drawFailed)="onDrawFailed($event)"
                     (drawExecuted)="load()" />
                 </div>
               </div>
@@ -154,13 +193,23 @@ import { RaffleActionsMenu } from '../raffle-actions-menu/raffle-actions-menu';
 })
 export class RaffleList implements OnInit, OnDestroy {
   private readonly raffleService = inject(RaffleService);
+  private readonly ws = inject(WebSocketService);
   private autoSlideTimer: ReturnType<typeof setInterval> | null = null;
+  private drawSubs: Subscription[] = [];
+  private activeDrawRaffleId: string | null = null;
 
   protected readonly loading = signal(true);
   protected readonly raffles = signal<RaffleListItem[]>([]);
   protected readonly showModal = signal(false);
   protected readonly openMenuId = signal<string | null>(null);
   protected readonly activeImageIndex = signal<Record<string, number>>({});
+  protected readonly liveDrawOpen = signal(false);
+  protected readonly liveDrawRaffle = signal<RaffleListItem | null>(null);
+  protected readonly liveDrawCountdown = signal<number | null>(null);
+  protected readonly liveDrawWinner = signal<number | null>(null);
+  protected readonly liveDrawWinnerName = signal('');
+  protected readonly winnerModalOpen = signal(false);
+  protected readonly winnerModalRaffle = signal<RaffleListItem | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -172,17 +221,25 @@ export class RaffleList implements OnInit, OnDestroy {
       clearInterval(this.autoSlideTimer);
       this.autoSlideTimer = null;
     }
+
+    this.cleanupDrawSubscriptions();
+    this.ws.disconnect();
   }
 
   protected load(): void {
     this.loading.set(true);
     this.raffleService.getMyRaffles().subscribe({
-      next: r => { this.raffles.set(r); this.loading.set(false); },
+      next: raffles => {
+        this.raffles.set(raffles);
+        this.loading.set(false);
+      },
       error: () => this.loading.set(false),
     });
   }
 
-  protected onRaffleCreated(): void { this.load(); }
+  protected onRaffleCreated(): void {
+    this.load();
+  }
 
   protected onRaffleChanged(updated: RaffleListItem): void {
     this.openMenuId.set(null);
@@ -192,6 +249,33 @@ export class RaffleList implements OnInit, OnDestroy {
   protected onRaffleDeleted(id: string): void {
     this.openMenuId.set(null);
     this.raffles.update(list => list.filter(x => x.id !== id));
+  }
+
+  protected onDrawRequested(raffle: RaffleListItem): void {
+    this.openMenuId.set(null);
+    this.liveDrawOpen.set(true);
+    this.liveDrawRaffle.set(raffle);
+    this.liveDrawCountdown.set(5);
+    this.liveDrawWinner.set(null);
+    this.liveDrawWinnerName.set('');
+    this.subscribeToLiveDraw(raffle);
+  }
+
+  protected onDrawFailed(message: string): void {
+    this.liveDrawOpen.set(false);
+    this.liveDrawRaffle.set(null);
+    this.liveDrawCountdown.set(null);
+    this.liveDrawWinner.set(null);
+    this.liveDrawWinnerName.set('');
+    this.cleanupDrawSubscriptions();
+    alert(message);
+  }
+
+  protected openWinnerDetails(event: MouseEvent, raffle: RaffleListItem): void {
+    event.stopPropagation();
+    if (!raffle.winnerPhone) return;
+    this.winnerModalRaffle.set(raffle);
+    this.winnerModalOpen.set(true);
   }
 
   protected closeAllMenus(): void {
@@ -247,6 +331,77 @@ export class RaffleList implements OnInit, OnDestroy {
 
   private setImageIndex(id: string, index: number): void {
     this.activeImageIndex.update(state => ({ ...state, [id]: index }));
+  }
+
+  private subscribeToLiveDraw(raffle: RaffleListItem): void {
+    if (this.activeDrawRaffleId === raffle.id) return;
+
+    this.cleanupDrawSubscriptions();
+    this.activeDrawRaffleId = raffle.id;
+
+    this.ws.connect().then(() => {
+      this.drawSubs = [
+        this.ws.subscribe<{ status: string }>(`/topic/raffle/${raffle.id}/status`).subscribe(evt => {
+          if (evt.status === 'FAILED') {
+            this.liveDrawOpen.set(false);
+            this.liveDrawRaffle.set(null);
+            this.liveDrawCountdown.set(null);
+            this.liveDrawWinner.set(null);
+            this.liveDrawWinnerName.set('');
+            this.cleanupDrawSubscriptions();
+            this.load();
+          }
+        }),
+        this.ws.subscribe<{ secondsRemaining: number }>(`/topic/raffle/${raffle.id}/countdown`).subscribe(evt => {
+          this.liveDrawOpen.set(true);
+          this.liveDrawCountdown.set(evt.secondsRemaining);
+        }),
+        this.ws.subscribe<{ winnerNumber: number; winnerName?: string; winnerPhone?: string }>(`/topic/raffle/${raffle.id}/result`).subscribe(evt => {
+          this.liveDrawCountdown.set(null);
+          this.liveDrawWinner.set(evt.winnerNumber);
+          this.liveDrawWinnerName.set(evt.winnerName || '');
+          this.raffles.update(list => list.map(item =>
+            item.id === raffle.id ? {
+              ...item,
+              operationalStatus: 'FINISHED',
+              winnerNumber: evt.winnerNumber,
+              winnerName: evt.winnerName || item.winnerName,
+              winnerPhone: evt.winnerPhone || item.winnerPhone
+            } : item
+          ));
+          setTimeout(() => {
+            this.liveDrawOpen.set(false);
+            this.liveDrawRaffle.set(null);
+            this.liveDrawWinner.set(null);
+            this.liveDrawWinnerName.set('');
+            this.cleanupDrawSubscriptions();
+            this.load();
+          }, 3200);
+        }),
+      ];
+    }).catch(() => {
+      this.liveDrawOpen.set(false);
+      this.liveDrawRaffle.set(null);
+      this.liveDrawCountdown.set(null);
+      this.liveDrawWinner.set(null);
+      this.liveDrawWinnerName.set('');
+      this.cleanupDrawSubscriptions();
+    });
+  }
+
+  private cleanupDrawSubscriptions(): void {
+    for (const sub of this.drawSubs) {
+      sub.unsubscribe();
+    }
+    this.drawSubs = [];
+
+    if (this.activeDrawRaffleId) {
+      this.ws.unsubscribe(`/topic/raffle/${this.activeDrawRaffleId}/status`);
+      this.ws.unsubscribe(`/topic/raffle/${this.activeDrawRaffleId}/countdown`);
+      this.ws.unsubscribe(`/topic/raffle/${this.activeDrawRaffleId}/result`);
+    }
+
+    this.activeDrawRaffleId = null;
   }
 
   protected formatDate(dt: string): string {

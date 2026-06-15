@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { RaffleService } from '../../../core/services/raffle.service';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
@@ -26,16 +27,24 @@ type StatusFilter = ReservationStatus | 'ALL';
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body py-3">
         <div class="row g-3 align-items-end">
-          <div class="col-12 col-md-5">
+          <div class="col-12 col-md-4">
             <label class="form-label small fw-semibold text-muted mb-1">Filtrar por rifa</label>
-            <select class="form-select form-select-sm" (change)="onRaffleChange($event)">
+            <select class="form-select form-select-sm" [value]="selectedRaffleId() || ''" (change)="onRaffleChange($event)">
               <option value="">Todas las rifas</option>
               @for (r of raffles(); track r.id) {
                 <option [value]="r.id">{{ r.title }}</option>
               }
             </select>
           </div>
-          <div class="col-12 col-md-7">
+          <div class="col-12 col-md-3">
+            <label class="form-label small fw-semibold text-muted mb-1">Teléfono</label>
+            <input class="form-control form-control-sm"
+                   type="text"
+                   placeholder="Filtrar por teléfono"
+                   [value]="phoneFilter()"
+                   (change)="onPhoneChange($event)">
+          </div>
+          <div class="col-12 col-md-5">
             <label class="form-label small fw-semibold text-muted mb-1">Estado</label>
             <div class="d-flex flex-wrap gap-2">
               @for (s of statusOptions; track s.value) {
@@ -170,6 +179,8 @@ type StatusFilter = ReservationStatus | 'ALL';
   `
 })
 export class ReservationsDashboard implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly reservationService = inject(ReservationService);
   private readonly raffleService = inject(RaffleService);
 
@@ -181,8 +192,9 @@ export class ReservationsDashboard implements OnInit {
   protected readonly page         = signal(0);
   protected readonly statusFilter = signal<StatusFilter>('ALL');
   protected readonly actionLoading = signal<string | null>(null);
+  protected readonly phoneFilter = signal('');
 
-  private selectedRaffleId = signal<string | undefined>(undefined);
+  protected readonly selectedRaffleId = signal<string | undefined>(undefined);
 
   protected readonly statusOptions: { value: StatusFilter; label: string }[] = [
     { value: 'ALL',       label: 'Todas' },
@@ -194,7 +206,12 @@ export class ReservationsDashboard implements OnInit {
 
   ngOnInit(): void {
     this.raffleService.getMyRaffles().subscribe(r => this.raffles.set(r));
-    this.load();
+    this.route.queryParamMap.subscribe(params => {
+      this.selectedRaffleId.set(params.get('raffleId') || undefined);
+      this.phoneFilter.set(params.get('phone') || '');
+      this.page.set(0);
+      this.load();
+    });
   }
 
   private load(): void {
@@ -202,7 +219,7 @@ export class ReservationsDashboard implements OnInit {
     const sf = this.statusFilter();
     const status: ReservationStatus | undefined = sf === 'ALL' ? undefined : sf;
     this.reservationService
-      .listOrganizerReservations(this.selectedRaffleId(), status, this.page())
+      .listOrganizerReservations(this.selectedRaffleId(), this.phoneFilter(), status, this.page())
       .subscribe({
         next: res => {
           this.reservations.set(res.content);
@@ -224,6 +241,14 @@ export class ReservationsDashboard implements OnInit {
     const val = (e.target as HTMLSelectElement).value;
     this.selectedRaffleId.set(val || undefined);
     this.page.set(0);
+    this.syncQueryParams();
+    this.load();
+  }
+
+  protected onPhoneChange(e: Event): void {
+    this.phoneFilter.set((e.target as HTMLInputElement).value.trim());
+    this.page.set(0);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -251,6 +276,18 @@ export class ReservationsDashboard implements OnInit {
 
   protected prevPage(): void { this.page.update(p => p - 1); this.load(); }
   protected nextPage(): void { this.page.update(p => p + 1); this.load(); }
+
+  private syncQueryParams(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        raffleId: this.selectedRaffleId() || null,
+        phone: this.phoneFilter() || null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
 
   protected formatDate(dt: string): string {
     return new Date(dt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });

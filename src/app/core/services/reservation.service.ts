@@ -18,9 +18,10 @@ export class ReservationService {
     return this.http.post<ReservationResponse>(`${environment.apiUrl}/public/reservations`, req);
   }
 
-  listOrganizerReservations(raffleId?: string, status?: ReservationStatus, page = 0, size = 20) {
+  listOrganizerReservations(raffleId?: string, phone?: string, status?: ReservationStatus, page = 0, size = 20) {
     let params = new HttpParams().set('page', page).set('size', size).set('sort', 'createdAt,desc');
     if (raffleId) params = params.set('raffleId', raffleId);
+    if (phone)    params = params.set('phone', phone);
     if (status)   params = params.set('status', status);
     return this.http.get<PageResponse<OrganizerReservation>>(`${environment.apiUrl}/organizer/reservations`, { params });
   }

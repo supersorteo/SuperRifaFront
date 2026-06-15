@@ -383,6 +383,46 @@ body {
   }
 }
 
+.raffle-card-shell--finished {
+  opacity: 0.78;
+
+  .raffle-media-frame__image {
+    filter: saturate(0.82);
+  }
+}
+
+.raffle-winner-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.14), rgba(239,68,68,0.14));
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.raffle-winner-chip__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.raffle-meta-strip__value--button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
 .raffle-media-frame {
   position: relative;
   height: 228px;

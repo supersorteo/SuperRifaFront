@@ -94,8 +94,12 @@ export interface RaffleListItem {
   slug: string;
   prizeName?: string;
   participantCount: number;
+  reservedCount: number;
   publicationStatus: string;
   operationalStatus: string;
+  winnerNumber?: number;
+  winnerName?: string;
+  winnerPhone?: string;
   totalNumbers: number;
   pricePerNumber: number;
   drawDateTime?: string;

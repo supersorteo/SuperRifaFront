@@ -466,7 +466,7 @@ export class RaffleFormModal implements OnDestroy {
       pricePerNumber: details.pricePerNumber!,
       drawDateTime: details.drawDateTime || undefined,
       drawMethod: 'MANUAL',
-      drawPolicy: 'PAID_ONLY',
+      drawPolicy: 'ALL_NUMBERS',
       prizeName: prize.prizeName || undefined,
       prizeDescription: prize.prizeDescription || undefined,
       prizeEstimatedValue: prize.prizeEstimatedValue ?? undefined,
