@@ -18,15 +18,21 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
         <div class="action-menu" role="menu">
           <button class="action-item" role="menuitem"
                   (click)="publish()"
-                  [class.action-item--disabled]="raffle().publicationStatus !== 'DRAFT'">
+                  [class.action-item--disabled]="!canPublish()">
             <i class="bi bi-send text-primary"></i>
-            <span>Publicar</span>
+            <span>{{ raffle().publicationStatus === 'PAUSED' ? 'Reactivar' : 'Publicar' }}</span>
           </button>
           <button class="action-item" role="menuitem"
                   (click)="pause()"
                   [class.action-item--disabled]="raffle().publicationStatus !== 'PUBLISHED'">
             <i class="bi bi-pause-circle" style="color:#f59e0b"></i>
             <span>Pausar</span>
+          </button>
+          <button class="action-item" role="menuitem"
+                  (click)="cancel()"
+                  [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED'">
+            <i class="bi bi-slash-circle" style="color:#dc2626"></i>
+            <span>Cancelar rifa</span>
           </button>
           <div class="action-divider"></div>
           <button class="action-item" role="menuitem"
@@ -63,7 +69,7 @@ export class RaffleActionsMenu {
   }
 
   protected publish(): void {
-    if (this.raffle().publicationStatus !== 'DRAFT') return;
+    if (!this.canPublish()) return;
     this.raffleService.publish(this.raffle().id).subscribe({
       next: updated => this.changed.emit(updated),
     });
@@ -72,6 +78,16 @@ export class RaffleActionsMenu {
   protected pause(): void {
     if (this.raffle().publicationStatus !== 'PUBLISHED') return;
     this.raffleService.pause(this.raffle().id).subscribe({
+      next: updated => this.changed.emit(updated),
+    });
+  }
+
+  protected cancel(): void {
+    const raffle = this.raffle();
+    if (raffle.operationalStatus === 'FINISHED' || raffle.operationalStatus === 'CANCELLED') return;
+    if (!confirm(`Cancelar la rifa "${raffle.title}"?\n\nLa rifa se cerrara definitivamente, se conservara el historial y las reservas activas quedaran canceladas.`)) return;
+
+    this.raffleService.cancel(raffle.id).subscribe({
       next: updated => this.changed.emit(updated),
     });
   }
@@ -99,5 +115,12 @@ export class RaffleActionsMenu {
     this.raffleService.delete(raffle.id).subscribe({
       next: () => this.deleted.emit(raffle.id),
     });
+  }
+
+  protected canPublish(): boolean {
+    const raffle = this.raffle();
+    return (raffle.publicationStatus === 'DRAFT' || raffle.publicationStatus === 'PAUSED')
+      && raffle.operationalStatus !== 'FINISHED'
+      && raffle.operationalStatus !== 'CANCELLED';
   }
 }

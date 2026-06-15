@@ -1,10 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RaffleService } from '../../../core/services/raffle.service';
 import { ReservationService } from '../../../core/services/reservation.service';
+import { WebSocketService } from '../../../core/services/websocket.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { OrganizerReservation, ReservationStatus } from '../../../core/models/reservation.models';
 import { RaffleListItem } from '../../../core/models/raffle.models';
+import { Subscription } from 'rxjs';
 
 type StatusFilter = ReservationStatus | 'ALL';
 
@@ -178,11 +180,13 @@ type StatusFilter = ReservationStatus | 'ALL';
     </div>
   `
 })
-export class ReservationsDashboard implements OnInit {
+export class ReservationsDashboard implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly reservationService = inject(ReservationService);
   private readonly raffleService = inject(RaffleService);
+  private readonly ws = inject(WebSocketService);
+  private readonly realtimeSubs = new Map<string, Subscription>();
 
   protected readonly loading      = signal(true);
   protected readonly reservations = signal<OrganizerReservation[]>([]);
@@ -205,13 +209,25 @@ export class ReservationsDashboard implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.raffleService.getMyRaffles().subscribe(r => this.raffles.set(r));
+    this.raffleService.getMyRaffles().subscribe(raffles => {
+      this.raffles.set(raffles);
+      this.syncRealtimeSubscriptions(raffles);
+    });
     this.route.queryParamMap.subscribe(params => {
       this.selectedRaffleId.set(params.get('raffleId') || undefined);
       this.phoneFilter.set(params.get('phone') || '');
       this.page.set(0);
       this.load();
     });
+  }
+
+  ngOnDestroy(): void {
+    for (const [raffleId, sub] of this.realtimeSubs.entries()) {
+      sub.unsubscribe();
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/progress`);
+    }
+    this.realtimeSubs.clear();
+    this.ws.disconnect();
   }
 
   private load(): void {
@@ -276,6 +292,28 @@ export class ReservationsDashboard implements OnInit {
 
   protected prevPage(): void { this.page.update(p => p - 1); this.load(); }
   protected nextPage(): void { this.page.update(p => p + 1); this.load(); }
+
+  private syncRealtimeSubscriptions(raffles: RaffleListItem[]): void {
+    const activeIds = new Set(raffles.map(raffle => raffle.id));
+
+    for (const [raffleId, sub] of this.realtimeSubs.entries()) {
+      if (activeIds.has(raffleId)) continue;
+      sub.unsubscribe();
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/progress`);
+      this.realtimeSubs.delete(raffleId);
+    }
+
+    this.ws.connect().then(() => {
+      for (const raffle of raffles) {
+        if (this.realtimeSubs.has(raffle.id)) continue;
+        const sub = this.ws.subscribe<{ available: number; reserved: number; paid: number }>(`/topic/raffle/${raffle.id}/progress`)
+          .subscribe(() => this.load());
+        this.realtimeSubs.set(raffle.id, sub);
+      }
+    }).catch(() => {
+      // ignore realtime failures here; manual reload still works
+    });
+  }
 
   private syncQueryParams(): void {
     this.router.navigate([], {

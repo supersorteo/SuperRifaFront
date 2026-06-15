@@ -511,6 +511,17 @@ export class RaffleDetail implements OnInit, OnDestroy {
             )
           );
         }),
+        this.ws.subscribe<{ available: number; reserved: number; paid: number }>(`/topic/raffle/${raffleId}/progress`).subscribe(evt => {
+          this.raffle.update(raffle => raffle ? {
+            ...raffle,
+            availableCount: evt.available,
+            reservedCount: evt.reserved,
+            paidCount: evt.paid,
+            operationalStatus: raffle.operationalStatus === 'FINISHED'
+              ? raffle.operationalStatus
+              : (evt.available === 0 ? 'SOLD_OUT' : raffle.operationalStatus),
+          } : raffle);
+        }),
         this.ws.subscribe<{ status: string }>(`/topic/raffle/${raffleId}/status`).subscribe(evt => {
           if (evt.status === 'EXECUTING') {
             this.showLiveDraw.set(true);

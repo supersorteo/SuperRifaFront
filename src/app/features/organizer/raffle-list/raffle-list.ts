@@ -195,8 +195,7 @@ export class RaffleList implements OnInit, OnDestroy {
   private readonly raffleService = inject(RaffleService);
   private readonly ws = inject(WebSocketService);
   private autoSlideTimer: ReturnType<typeof setInterval> | null = null;
-  private drawSubs: Subscription[] = [];
-  private activeDrawRaffleId: string | null = null;
+  private realtimeSubs = new Map<string, Subscription[]>();
 
   protected readonly loading = signal(true);
   protected readonly raffles = signal<RaffleListItem[]>([]);
@@ -222,7 +221,7 @@ export class RaffleList implements OnInit, OnDestroy {
       this.autoSlideTimer = null;
     }
 
-    this.cleanupDrawSubscriptions();
+    this.cleanupRealtimeSubscriptions();
     this.ws.disconnect();
   }
 
@@ -232,6 +231,7 @@ export class RaffleList implements OnInit, OnDestroy {
       next: raffles => {
         this.raffles.set(raffles);
         this.loading.set(false);
+        this.syncRealtimeSubscriptions(raffles);
       },
       error: () => this.loading.set(false),
     });
@@ -258,7 +258,6 @@ export class RaffleList implements OnInit, OnDestroy {
     this.liveDrawCountdown.set(5);
     this.liveDrawWinner.set(null);
     this.liveDrawWinnerName.set('');
-    this.subscribeToLiveDraw(raffle);
   }
 
   protected onDrawFailed(message: string): void {
@@ -267,7 +266,6 @@ export class RaffleList implements OnInit, OnDestroy {
     this.liveDrawCountdown.set(null);
     this.liveDrawWinner.set(null);
     this.liveDrawWinnerName.set('');
-    this.cleanupDrawSubscriptions();
     alert(message);
   }
 
@@ -333,75 +331,106 @@ export class RaffleList implements OnInit, OnDestroy {
     this.activeImageIndex.update(state => ({ ...state, [id]: index }));
   }
 
-  private subscribeToLiveDraw(raffle: RaffleListItem): void {
-    if (this.activeDrawRaffleId === raffle.id) return;
+  private syncRealtimeSubscriptions(raffles: RaffleListItem[]): void {
+    const activeIds = new Set(raffles.map(raffle => raffle.id));
 
-    this.cleanupDrawSubscriptions();
-    this.activeDrawRaffleId = raffle.id;
+    for (const [raffleId, subs] of this.realtimeSubs.entries()) {
+      if (activeIds.has(raffleId)) continue;
+      subs.forEach(sub => sub.unsubscribe());
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/progress`);
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/status`);
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/countdown`);
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/result`);
+      this.realtimeSubs.delete(raffleId);
+    }
 
     this.ws.connect().then(() => {
-      this.drawSubs = [
-        this.ws.subscribe<{ status: string }>(`/topic/raffle/${raffle.id}/status`).subscribe(evt => {
-          if (evt.status === 'FAILED') {
-            this.liveDrawOpen.set(false);
-            this.liveDrawRaffle.set(null);
+      for (const raffle of raffles) {
+        if (this.realtimeSubs.has(raffle.id)) continue;
+
+        const subs = [
+          this.ws.subscribe<{ available: number; reserved: number; paid: number }>(`/topic/raffle/${raffle.id}/progress`).subscribe(evt => {
+            this.raffles.update(list => list.map(item =>
+              item.id === raffle.id ? {
+                ...item,
+                reservedCount: evt.reserved,
+                operationalStatus: item.operationalStatus === 'FINISHED'
+                  ? item.operationalStatus
+                  : (evt.available === 0 ? 'SOLD_OUT' : 'ACTIVE')
+              } : item
+            ));
+          }),
+          this.ws.subscribe<{ status: string }>(`/topic/raffle/${raffle.id}/status`).subscribe(evt => {
+            if (evt.status === 'EXECUTING') {
+              const current = this.raffles().find(item => item.id === raffle.id) ?? raffle;
+              this.liveDrawOpen.set(true);
+              this.liveDrawRaffle.set(current);
+              this.liveDrawCountdown.set(5);
+              this.liveDrawWinner.set(null);
+              this.liveDrawWinnerName.set('');
+              this.raffles.update(list => list.map(item =>
+                item.id === raffle.id ? { ...item, operationalStatus: 'EXECUTING' } : item
+              ));
+            }
+
+            if (evt.status === 'FAILED') {
+              this.liveDrawOpen.set(false);
+              this.liveDrawRaffle.set(null);
+              this.liveDrawCountdown.set(null);
+              this.liveDrawWinner.set(null);
+              this.liveDrawWinnerName.set('');
+              this.raffles.update(list => list.map(item =>
+                item.id === raffle.id ? { ...item, operationalStatus: item.reservedCount > 0 ? 'ACTIVE' : item.operationalStatus } : item
+              ));
+            }
+          }),
+          this.ws.subscribe<{ secondsRemaining: number }>(`/topic/raffle/${raffle.id}/countdown`).subscribe(evt => {
+            this.liveDrawOpen.set(true);
+            this.liveDrawCountdown.set(evt.secondsRemaining);
+          }),
+          this.ws.subscribe<{ winnerNumber: number; winnerName?: string; winnerPhone?: string }>(`/topic/raffle/${raffle.id}/result`).subscribe(evt => {
             this.liveDrawCountdown.set(null);
-            this.liveDrawWinner.set(null);
-            this.liveDrawWinnerName.set('');
-            this.cleanupDrawSubscriptions();
-            this.load();
-          }
-        }),
-        this.ws.subscribe<{ secondsRemaining: number }>(`/topic/raffle/${raffle.id}/countdown`).subscribe(evt => {
-          this.liveDrawOpen.set(true);
-          this.liveDrawCountdown.set(evt.secondsRemaining);
-        }),
-        this.ws.subscribe<{ winnerNumber: number; winnerName?: string; winnerPhone?: string }>(`/topic/raffle/${raffle.id}/result`).subscribe(evt => {
-          this.liveDrawCountdown.set(null);
-          this.liveDrawWinner.set(evt.winnerNumber);
-          this.liveDrawWinnerName.set(evt.winnerName || '');
-          this.raffles.update(list => list.map(item =>
-            item.id === raffle.id ? {
-              ...item,
-              operationalStatus: 'FINISHED',
-              winnerNumber: evt.winnerNumber,
-              winnerName: evt.winnerName || item.winnerName,
-              winnerPhone: evt.winnerPhone || item.winnerPhone
-            } : item
-          ));
-          setTimeout(() => {
-            this.liveDrawOpen.set(false);
-            this.liveDrawRaffle.set(null);
-            this.liveDrawWinner.set(null);
-            this.liveDrawWinnerName.set('');
-            this.cleanupDrawSubscriptions();
-            this.load();
-          }, 3200);
-        }),
-      ];
+            this.liveDrawWinner.set(evt.winnerNumber);
+            this.liveDrawWinnerName.set(evt.winnerName || '');
+            this.raffles.update(list => list.map(item =>
+              item.id === raffle.id ? {
+                ...item,
+                operationalStatus: 'FINISHED',
+                winnerNumber: evt.winnerNumber,
+                winnerName: evt.winnerName || item.winnerName,
+                winnerPhone: evt.winnerPhone || item.winnerPhone
+              } : item
+            ));
+            setTimeout(() => {
+              this.liveDrawOpen.set(false);
+              this.liveDrawRaffle.set(null);
+              this.liveDrawWinner.set(null);
+              this.liveDrawWinnerName.set('');
+              this.load();
+            }, 3200);
+          }),
+        ];
+
+        this.realtimeSubs.set(raffle.id, subs);
+      }
     }).catch(() => {
       this.liveDrawOpen.set(false);
       this.liveDrawRaffle.set(null);
       this.liveDrawCountdown.set(null);
       this.liveDrawWinner.set(null);
       this.liveDrawWinnerName.set('');
-      this.cleanupDrawSubscriptions();
     });
   }
 
-  private cleanupDrawSubscriptions(): void {
-    for (const sub of this.drawSubs) {
-      sub.unsubscribe();
+  private cleanupRealtimeSubscriptions(): void {
+    for (const [raffleId, subs] of this.realtimeSubs.entries()) {
+      subs.forEach(sub => sub.unsubscribe());
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/progress`);
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/status`);
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/countdown`);
+      this.ws.unsubscribe(`/topic/raffle/${raffleId}/result`);
     }
-    this.drawSubs = [];
-
-    if (this.activeDrawRaffleId) {
-      this.ws.unsubscribe(`/topic/raffle/${this.activeDrawRaffleId}/status`);
-      this.ws.unsubscribe(`/topic/raffle/${this.activeDrawRaffleId}/countdown`);
-      this.ws.unsubscribe(`/topic/raffle/${this.activeDrawRaffleId}/result`);
-    }
-
-    this.activeDrawRaffleId = null;
+    this.realtimeSubs.clear();
   }
 
   protected formatDate(dt: string): string {

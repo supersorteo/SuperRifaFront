@@ -36,6 +36,10 @@ export class RaffleService {
     return this.http.post<RaffleListItem>(`${environment.apiUrl}/organizer/raffles/${id}/pause`, {});
   }
 
+  cancel(id: string) {
+    return this.http.post<RaffleListItem>(`${environment.apiUrl}/organizer/raffles/${id}/cancel`, {});
+  }
+
   delete(id: string) {
     return this.http.delete<void>(`${environment.apiUrl}/organizer/raffles/${id}`);
   }
