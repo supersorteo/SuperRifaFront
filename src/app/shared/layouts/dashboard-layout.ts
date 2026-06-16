@@ -26,7 +26,7 @@ import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
         <div class="d-flex align-items-center justify-content-between px-3 py-3">
           <a class="sidebar-brand py-0" routerLink="/" (click)="sidebarOpen.set(false)">
             <i class="bi bi-ticket-perforated-fill text-warning fs-5"></i>
-            SuperRifa
+            SuperSorteo
           </a>
           <button class="btn btn-link text-white p-1" (click)="sidebarOpen.set(false)" aria-label="Cerrar menú">
             <i class="bi bi-x-lg"></i>
@@ -93,7 +93,7 @@ import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
           </button>
           <a routerLink="/" class="d-flex align-items-center gap-2 text-decoration-none">
             <i class="bi bi-ticket-perforated-fill text-warning"></i>
-            <span class="text-white fw-bold">SuperRifa</span>
+            <span class="text-white fw-bold">SuperSorteo</span>
           </a>
           <div class="ms-auto text-white-50 small d-none d-sm-block">
             {{ firstName() }}

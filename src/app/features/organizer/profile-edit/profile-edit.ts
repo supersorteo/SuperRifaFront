@@ -2,11 +2,23 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { OrganizerService } from '../../../core/services/organizer.service';
 import { OrganizerProfile } from '../../../core/models/organizer.models';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-profile-edit',
-  imports: [FormsModule],
+  imports: [FormsModule, ConfirmDialog],
   template: `
+    <app-confirm-dialog
+      [open]="avatarDialogOpen()"
+      title="Cambiar foto de perfil"
+      [body]="avatarDialogBody()"
+      icon="bi bi-camera-fill"
+      tone="info"
+      confirmLabel="Cambiar foto"
+      [busy]="avatarLoading()"
+      (cancelled)="cancelAvatarChange()"
+      (confirmed)="confirmAvatarChange()" />
+
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
       <div>
         <h2 class="fw-black mb-1">Mi perfil</h2>
@@ -129,9 +141,13 @@ export class ProfileEdit implements OnInit {
   protected readonly loading     = signal(true);
   protected readonly saving      = signal(false);
   protected readonly avatarLoading = signal(false);
+  protected readonly avatarDialogOpen = signal(false);
+  protected readonly avatarDialogBody = signal('¿Deseas cambiar tu foto de perfil?');
   protected readonly saved       = signal(false);
   protected readonly error       = signal<string | null>(null);
   protected readonly profile     = signal<OrganizerProfile | null>(null);
+  private pendingAvatarFile: File | null = null;
+  private pendingAvatarInput: HTMLInputElement | null = null;
 
   protected fields = {
     businessName: '',
@@ -177,13 +193,50 @@ export class ProfileEdit implements OnInit {
   }
 
   protected onAvatarChange(e: Event): void {
-    const file = (e.target as HTMLInputElement).files?.[0];
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
+    this.pendingAvatarFile = file;
+    this.pendingAvatarInput = input;
+    this.error.set(null);
+    this.avatarDialogBody.set(`Se reemplazara tu foto actual por "${file.name}".`);
+    this.avatarDialogOpen.set(true);
+  }
+
+  protected cancelAvatarChange(): void {
+    this.avatarDialogOpen.set(false);
+    this.pendingAvatarFile = null;
+    if (this.pendingAvatarInput) {
+      this.pendingAvatarInput.value = '';
+    }
+    this.pendingAvatarInput = null;
+  }
+
+  protected confirmAvatarChange(): void {
+    const file = this.pendingAvatarFile;
+    if (!file) {
+      this.cancelAvatarChange();
+      return;
+    }
+    this.avatarDialogOpen.set(false);
     this.avatarLoading.set(true);
     this.orgService.uploadAvatar(file).subscribe({
-      next: p => { this.profile.set(p); this.avatarLoading.set(false); },
+      next: p => {
+        this.profile.set(p);
+        this.avatarLoading.set(false);
+        this.pendingAvatarFile = null;
+        if (this.pendingAvatarInput) {
+          this.pendingAvatarInput.value = '';
+        }
+        this.pendingAvatarInput = null;
+      },
       error: () => {
         this.avatarLoading.set(false);
+        this.pendingAvatarFile = null;
+        if (this.pendingAvatarInput) {
+          this.pendingAvatarInput.value = '';
+        }
+        this.pendingAvatarInput = null;
         this.error.set('No se pudo subir la imagen.');
       },
     });

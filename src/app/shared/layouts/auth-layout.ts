@@ -21,7 +21,7 @@ import { RouterLink, RouterOutlet } from '@angular/router';
           <!-- Brand -->
           <a routerLink="/" class="al-brand text-decoration-none">
             <i class="bi bi-ticket-perforated-fill"></i>
-            <span>SuperRifa</span>
+            <span>SuperSorteo</span>
           </a>
 
           <!-- Headline -->
@@ -68,7 +68,7 @@ import { RouterLink, RouterOutlet } from '@angular/router';
         <div class="al-mobile-header d-flex d-lg-none">
           <a routerLink="/" class="al-brand text-decoration-none">
             <i class="bi bi-ticket-perforated-fill"></i>
-            <span>SuperRifa</span>
+            <span>SuperSorteo</span>
           </a>
         </div>
 
@@ -81,7 +81,7 @@ import { RouterLink, RouterOutlet } from '@angular/router';
 
         <!-- Footer -->
         <div class="al-footer">
-          <span>© 2026 SuperRifa</span>
+          <span>© 2026 SuperSorteo</span>
           <span class="al-footer__dot">·</span>
           <span>Plataforma segura</span>
           <i class="bi bi-shield-check-fill" style="color:#10b981;font-size:.8rem"></i>

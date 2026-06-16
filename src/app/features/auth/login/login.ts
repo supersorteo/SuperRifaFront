@@ -13,7 +13,7 @@ import { AuthService } from '../../../core/services/auth.service';
     </div>
 
     <h2 class="auth-title">Bienvenido de nuevo</h2>
-    <p class="auth-sub">Ingresá a tu cuenta de SuperRifa para continuar</p>
+    <p class="auth-sub">Ingresá a tu cuenta de SuperSorteo para continuar</p>
 
     <!-- Success alert -->
     @if (registered()) {
@@ -215,7 +215,7 @@ export class Login {
     this.error.set('');
 
     this.auth.login(this.form.getRawValue() as { email: string; password: string }).subscribe({
-      next: () => this.router.navigate([this.auth.isAdmin() ? '/admin' : '/dashboard']),
+      next: () => this.router.navigate(['/dashboard']),
       error: (e: Error) => {
         this.error.set(e.message);
         this.loading.set(false);

@@ -15,7 +15,7 @@ import { StatusBadge } from '../../../shared/components/status-badge/status-badg
         <div class="mn-hero">
           <div class="mn-hero__logo">
             <i class="bi bi-ticket-perforated-fill"></i>
-            <span>SuperRifa</span>
+            <span>SuperSorteo</span>
           </div>
           @if (slug) {
             <div class="mn-hero__back">
@@ -133,7 +133,7 @@ import { StatusBadge } from '../../../shared/components/status-badge/status-badg
       <footer class="mn-footer">
         <div class="mn-footer__inner">
           <span class="mn-footer__brand">
-            <i class="bi bi-ticket-perforated-fill"></i>SuperRifa
+            <i class="bi bi-ticket-perforated-fill"></i>SuperSorteo
           </span>
           <span class="mn-footer__powered">Plataforma de rifas digitales</span>
         </div>

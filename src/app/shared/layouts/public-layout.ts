@@ -14,7 +14,7 @@ import { AuthService } from '../../core/services/auth.service';
                 style="width:34px;height:34px;font-size:1.1rem">
             <i class="bi bi-ticket-perforated-fill text-white"></i>
           </span>
-          <span class="text-white">SuperRifa</span>
+          <span class="text-white">SuperSorteo</span>
         </a>
 
         <button class="btn btn-link text-white d-lg-none p-2 ms-auto"
@@ -77,7 +77,7 @@ import { AuthService } from '../../core/services/auth.service';
           <div class="col-md-4">
             <div class="d-flex align-items-center gap-2 mb-2">
               <i class="bi bi-ticket-perforated-fill text-warning fs-5"></i>
-              <span class="fw-bold fs-5">SuperRifa</span>
+              <span class="fw-bold fs-5">SuperSorteo</span>
             </div>
             <p class="text-white-50 small mb-0">Plataforma profesional de rifas online para Argentina. Segura, transparente y en tiempo real.</p>
           </div>
@@ -98,7 +98,7 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
         <div class="section-divider mb-4" style="opacity:.15"></div>
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
-          <p class="mb-0 text-white-50 small">© 2026 SuperRifa. Todos los derechos reservados.</p>
+          <p class="mb-0 text-white-50 small">© 2026 SuperSorteo. Todos los derechos reservados.</p>
           <p class="mb-0 text-white-50 small">Hecho con <i class="bi bi-heart-fill text-danger small"></i> en Argentina</p>
         </div>
       </div>

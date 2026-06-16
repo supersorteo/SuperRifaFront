@@ -1,6 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Location } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
@@ -198,7 +197,7 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
 })
 export class AdminLayout {
   private readonly auth = inject(AuthService);
-  private readonly location = inject(Location);
+  private readonly router = inject(Router);
 
   protected readonly mobileOpen = signal(false);
   protected readonly logoutDialogOpen = signal(false);
@@ -227,6 +226,7 @@ export class AdminLayout {
   }
 
   protected goBack(): void {
-    this.location.back();
+    this.mobileOpen.set(false);
+    this.router.navigate([this.auth.hasOrgSession() && this.auth.isOrganizer() ? '/dashboard' : '/']);
   }
 }

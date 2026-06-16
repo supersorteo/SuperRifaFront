@@ -30,7 +30,7 @@ import { NotificationService } from '../../../core/services/notification.service
       <div class="rd-header__inner">
         <span class="rd-logo">
           <i class="bi bi-ticket-perforated-fill"></i>
-          <span>SuperRifa</span>
+          <span>SuperSorteo</span>
         </span>
         @if (raffle()) {
           <a [routerLink]="['/mis-numeros']" [queryParams]="{ slug: raffle()!.slug }"
@@ -540,7 +540,7 @@ import { NotificationService } from '../../../core/services/notification.service
       <footer class="rd-footer">
         <div class="rd-footer__inner">
           <span class="rd-footer__brand">
-            <i class="bi bi-ticket-perforated-fill"></i>SuperRifa
+            <i class="bi bi-ticket-perforated-fill"></i>SuperSorteo
           </span>
           <span class="rd-footer__powered">Plataforma de rifas digitales</span>
         </div>
