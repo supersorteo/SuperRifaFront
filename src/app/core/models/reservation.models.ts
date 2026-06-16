@@ -2,6 +2,7 @@ export interface CreateReservationRequest {
   raffleSlug: string;
   numbers: number[];
   participant: ParticipantData;
+  accessCode: string;
   paymentMethodId?: string;
 }
 

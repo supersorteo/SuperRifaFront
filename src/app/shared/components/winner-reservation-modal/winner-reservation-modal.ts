@@ -3,11 +3,12 @@ import { RouterLink } from '@angular/router';
 import { CurrencyArPipe } from '../../pipes/currency-ar.pipe';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { ParticipantLookupResult, ReservationSummary } from '../../../core/models/reservation.models';
+import { StatusBadge } from '../status-badge/status-badge';
 
 @Component({
   selector: 'app-winner-reservation-modal',
   standalone: true,
-  imports: [CurrencyArPipe, RouterLink],
+  imports: [CurrencyArPipe, RouterLink, StatusBadge],
   template: `
     @if (open()) {
       <div class="modal-backdrop fade show" style="z-index:1050" (click)="close()"></div>
@@ -69,9 +70,7 @@ import { ParticipantLookupResult, ReservationSummary } from '../../../core/model
                             <div class="small text-muted">Reserva</div>
                             <div class="fw-semibold">{{ reservation.id }}</div>
                           </div>
-                          <span class="badge rounded-pill fw-semibold" [class]="statusCls(reservation.status)">
-                            {{ statusLabel(reservation.status) }}
-                          </span>
+                          <app-status-badge category="reservation" [value]="reservation.status"></app-status-badge>
                         </div>
 
                         <div class="mb-3">
@@ -164,21 +163,4 @@ export class WinnerReservationModal {
     });
   }
 
-  protected statusCls(status: ReservationSummary['status']): string {
-    return ({
-      PENDING: 'bg-warning text-dark',
-      CONFIRMED: 'bg-success text-white',
-      CANCELLED: 'bg-danger text-white',
-      EXPIRED: 'bg-secondary text-white',
-    })[status] ?? 'bg-secondary text-white';
-  }
-
-  protected statusLabel(status: ReservationSummary['status']): string {
-    return ({
-      PENDING: 'Pendiente',
-      CONFIRMED: 'Confirmada',
-      CANCELLED: 'Cancelada',
-      EXPIRED: 'Expirada',
-    })[status] ?? status;
-  }
 }

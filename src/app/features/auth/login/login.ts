@@ -7,67 +7,190 @@ import { AuthService } from '../../../core/services/auth.service';
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <h2 class="fw-bold mb-1 text-center">Bienvenido</h2>
-    <p class="text-muted text-center small mb-4">Ingresá a tu cuenta de SuperRifa</p>
+    <!-- Icon badge -->
+    <div class="auth-icon-badge mb-4">
+      <i class="bi bi-ticket-perforated-fill"></i>
+    </div>
 
+    <h2 class="auth-title">Bienvenido de nuevo</h2>
+    <p class="auth-sub">Ingresá a tu cuenta de SuperRifa para continuar</p>
+
+    <!-- Success alert -->
     @if (registered()) {
-      <div class="alert alert-success py-2 small" role="status">
-        <i class="bi bi-check-circle-fill me-1"></i>¡Cuenta creada! Ingresá con tus credenciales.
+      <div class="auth-alert auth-alert--success" role="status">
+        <i class="bi bi-check-circle-fill"></i>
+        ¡Cuenta creada! Ingresá con tus credenciales.
       </div>
     }
 
+    <!-- Error alert -->
     @if (error()) {
-      <div class="alert alert-danger py-2 small" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ error() }}
+      <div class="auth-alert auth-alert--danger" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        {{ error() }}
       </div>
     }
 
-    <form [formGroup]="form" (ngSubmit)="submit()">
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <!-- Email -->
       <div class="mb-3">
-        <label class="form-label fw-medium" for="email">Email</label>
-        <input id="email" type="email" class="form-control"
+        <label class="auth-label" for="email">
+          <i class="bi bi-envelope me-1 opacity-50"></i>Email
+        </label>
+        <input id="email" type="email" class="form-control auth-input"
                formControlName="email" autocomplete="email"
+               placeholder="tu@email.com"
                [class.is-invalid]="touched('email') && form.get('email')?.invalid">
         @if (touched('email') && form.get('email')?.hasError('required')) {
           <div class="invalid-feedback">El email es obligatorio</div>
         }
+        @if (touched('email') && form.get('email')?.hasError('email')) {
+          <div class="invalid-feedback">Ingresá un email válido</div>
+        }
       </div>
 
+      <!-- Password -->
       <div class="mb-4">
-        <label class="form-label fw-medium" for="password">Contraseña</label>
-        <div class="input-group">
-          <input id="password" [type]="showPass() ? 'text' : 'password'" class="form-control"
+        <label class="auth-label" for="password">
+          <i class="bi bi-lock me-1 opacity-50"></i>Contraseña
+        </label>
+        <div class="input-group auth-input-group">
+          <input id="password" [type]="showPass() ? 'text' : 'password'"
+                 class="form-control auth-input"
                  formControlName="password" autocomplete="current-password"
+                 placeholder="Tu contraseña"
                  [class.is-invalid]="touched('password') && form.get('password')?.invalid">
-          <button type="button" class="btn btn-outline-secondary"
+          <button type="button" class="auth-pass-toggle"
                   (click)="showPass.set(!showPass())"
                   [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
             <i [class]="showPass() ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
           </button>
+          @if (touched('password') && form.get('password')?.invalid) {
+            <div class="invalid-feedback">La contraseña es obligatoria</div>
+          }
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"
+      <!-- Submit -->
+      <button type="submit" class="btn btn-gradient w-100 py-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2"
               [disabled]="loading()">
         @if (loading()) {
-          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          Ingresando...
+        } @else {
+          <i class="bi bi-box-arrow-in-right"></i>Iniciar sesión
         }
-        Iniciar sesión
       </button>
     </form>
 
-    <hr class="my-3">
-    <p class="text-center small mb-0">
-      ¿No tenés cuenta?
-      <a routerLink="/auth/register" class="text-primary fw-medium">Registrate gratis</a>
-    </p>
-  `
+    <!-- Divider -->
+    <div class="auth-divider">
+      <span>¿No tenés cuenta?</span>
+    </div>
+
+    <a routerLink="/auth/register" class="auth-link-btn">
+      <i class="bi bi-person-plus-fill me-1"></i>
+      Registrate gratis
+    </a>
+  `,
+  styles: [`
+    :host { display: block; }
+
+    .auth-icon-badge {
+      width: 58px; height: 58px; border-radius: 1rem; margin: 0 auto;
+      background: linear-gradient(135deg, #eef2ff, #e0e3ff);
+      border: 1px solid rgba(99,102,241,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      color: #6366f1;
+      box-shadow: 0 4px 16px rgba(99,102,241,.18);
+    }
+
+    .auth-title {
+      text-align: center; font-size: 1.45rem; font-weight: 900;
+      color: #18181b; margin-bottom: .35rem; letter-spacing: -0.03em;
+    }
+    .auth-sub {
+      text-align: center; color: #71717a; font-size: .875rem;
+      margin-bottom: 1.5rem; line-height: 1.5;
+    }
+
+    .auth-alert {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .7rem .9rem; border-radius: .75rem;
+      font-size: .85rem; font-weight: 500; margin-bottom: 1.25rem;
+    }
+    .auth-alert--success {
+      background: #f0fdf4; color: #15803d; border: 1px solid rgba(22,163,74,.2);
+    }
+    .auth-alert--danger {
+      background: #fff1f2; color: #be123c; border: 1px solid rgba(244,63,94,.2);
+    }
+
+    .auth-label {
+      display: block; font-size: .82rem; font-weight: 700;
+      color: #3f3f46; margin-bottom: .35rem;
+    }
+
+    .auth-input {
+      border-color: #e0e3ff;
+      border-radius: .75rem !important;
+      padding: .65rem .9rem;
+      font-size: .9rem;
+      background: #fafaff;
+      transition: border-color .2s, box-shadow .2s, background .2s;
+
+      &:focus {
+        background: #fff;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99,102,241,.16);
+      }
+    }
+
+    .auth-input-group {
+      display: flex;
+      .auth-input { border-right: none; border-radius: .75rem 0 0 .75rem !important; }
+    }
+
+    .auth-pass-toggle {
+      border: 1.5px solid #e0e3ff; border-left: none;
+      border-radius: 0 .75rem .75rem 0;
+      background: #fafaff; color: #71717a;
+      padding: 0 .85rem; cursor: pointer;
+      transition: background .15s, color .15s;
+      display: flex; align-items: center; justify-content: center;
+
+      &:hover { background: #f3f4ff; color: #6366f1; }
+    }
+
+    .auth-divider {
+      display: flex; align-items: center; gap: .75rem;
+      margin: 1.25rem 0;
+      &::before, &::after { content: ''; flex: 1; height: 1px; background: #e4e4e7; }
+      span { color: #a1a1aa; font-size: .8rem; white-space: nowrap; }
+    }
+
+    .auth-link-btn {
+      display: flex; align-items: center; justify-content: center; gap: .4rem;
+      width: 100%; padding: .7rem;
+      border: 1.5px solid #e0e3ff; border-radius: .75rem;
+      color: #6366f1; font-weight: 700; font-size: .88rem;
+      text-decoration: none; background: #fafaff;
+      transition: border-color .18s, background .18s, box-shadow .18s;
+
+      &:hover {
+        border-color: #6366f1; background: #f3f4ff;
+        box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+        color: #4338ca;
+      }
+    }
+  `]
 })
 export class Login {
   protected readonly auth  = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
-  private readonly fb   = inject(FormBuilder);
+  private readonly route  = inject(ActivatedRoute);
+  private readonly fb     = inject(FormBuilder);
 
   protected readonly loading    = signal(false);
   protected readonly error      = signal('');

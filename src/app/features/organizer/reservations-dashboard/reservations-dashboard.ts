@@ -1,31 +1,61 @@
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { RaffleService } from '../../../core/services/raffle.service';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { WebSocketService } from '../../../core/services/websocket.service';
-import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { OrganizerReservation, ReservationStatus } from '../../../core/models/reservation.models';
 import { RaffleListItem } from '../../../core/models/raffle.models';
-import { Subscription } from 'rxjs';
+import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
+import { ConfirmDialog, ConfirmDialogItem } from '../../../shared/components/confirm-dialog/confirm-dialog';
+import { NotificationService } from '../../../core/services/notification.service';
 
 type StatusFilter = ReservationStatus | 'ALL';
+type ReservationAction = 'confirm' | 'cancel' | null;
 
 @Component({
   selector: 'app-reservations-dashboard',
-  imports: [CurrencyArPipe],
+  imports: [CurrencyArPipe, StatusBadge, ConfirmDialog],
   template: `
-    <!-- Header -->
+    @if (pendingAction() === 'confirm' && selectedReservation()) {
+      <app-confirm-dialog
+        [open]="true"
+        title="Confirmar reserva"
+        [body]="'Se confirmara la reserva de ' + selectedReservation()!.participantName + ' en la rifa ' + selectedReservation()!.raffleTitle + '.'"
+        icon="bi bi-check-circle-fill"
+        tone="info"
+        confirmLabel="Confirmar pago"
+        [busy]="actionLoading() === selectedReservation()!.id"
+        [items]="confirmItems()"
+        (cancelled)="closeDialog()"
+        (confirmed)="confirmSelected()" />
+    }
+
+    @if (pendingAction() === 'cancel' && selectedReservation()) {
+      <app-confirm-dialog
+        [open]="true"
+        title="Cancelar reserva"
+        [body]="'Se cancelara la reserva de ' + selectedReservation()!.participantName + ' y sus numeros volveran a quedar disponibles.'"
+        icon="bi bi-x-circle-fill"
+        tone="danger"
+        confirmLabel="Cancelar reserva"
+        [busy]="actionLoading() === selectedReservation()!.id"
+        [items]="cancelItems()"
+        (cancelled)="closeDialog()"
+        (confirmed)="cancelSelected()" />
+    }
+
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
       <div>
         <h2 class="fw-black mb-1">Reservas</h2>
-        <p class="text-muted mb-0">Gestión de reservas de tus rifas</p>
+        <p class="text-muted mb-0">Gestion de reservas de tus rifas</p>
       </div>
       <div class="text-muted small">
         <span class="badge bg-primary rounded-pill">{{ total() }}</span> reservas encontradas
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body py-3">
         <div class="row g-3 align-items-end">
@@ -39,10 +69,10 @@ type StatusFilter = ReservationStatus | 'ALL';
             </select>
           </div>
           <div class="col-12 col-md-3">
-            <label class="form-label small fw-semibold text-muted mb-1">Teléfono</label>
+            <label class="form-label small fw-semibold text-muted mb-1">Telefono</label>
             <input class="form-control form-control-sm"
                    type="text"
-                   placeholder="Filtrar por teléfono"
+                   placeholder="Filtrar por telefono"
                    [value]="phoneFilter()"
                    (change)="onPhoneChange($event)">
           </div>
@@ -63,7 +93,6 @@ type StatusFilter = ReservationStatus | 'ALL';
       </div>
     </div>
 
-    <!-- Table -->
     <div class="card border-0 shadow-sm">
       <div class="card-body p-0">
         @if (loading()) {
@@ -84,7 +113,7 @@ type StatusFilter = ReservationStatus | 'ALL';
                 <tr>
                   <th class="ps-4">Participante</th>
                   <th class="d-none d-md-table-cell">Rifa</th>
-                  <th>Números</th>
+                  <th>Numeros</th>
                   <th class="d-none d-sm-table-cell">Total</th>
                   <th>Estado</th>
                   <th class="d-none d-lg-table-cell">Fecha</th>
@@ -117,9 +146,7 @@ type StatusFilter = ReservationStatus | 'ALL';
                       {{ r.totalAmount | currencyAr }}
                     </td>
                     <td>
-                      <span class="badge rounded-pill fw-semibold" [class]="statusCls(r.status)">
-                        {{ statusLabel(r.status) }}
-                      </span>
+                      <app-status-badge category="reservation" [value]="r.status"></app-status-badge>
                     </td>
                     <td class="d-none d-lg-table-cell small text-muted">
                       {{ formatDate(r.createdAt) }}
@@ -159,7 +186,6 @@ type StatusFilter = ReservationStatus | 'ALL';
             </table>
           </div>
 
-          <!-- Pagination -->
           @if (totalPages() > 1) {
             <div class="d-flex justify-content-center align-items-center gap-2 py-3 border-top">
               <button class="btn btn-sm btn-outline-secondary rounded-3"
@@ -167,7 +193,7 @@ type StatusFilter = ReservationStatus | 'ALL';
                       (click)="prevPage()">
                 <i class="bi bi-chevron-left"></i>
               </button>
-              <span class="small text-muted">Pág. {{ page() + 1 }} / {{ totalPages() }}</span>
+              <span class="small text-muted">Pag. {{ page() + 1 }} / {{ totalPages() }}</span>
               <button class="btn btn-sm btn-outline-secondary rounded-3"
                       [disabled]="page() + 1 >= totalPages()"
                       (click)="nextPage()">
@@ -186,26 +212,28 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
   private readonly reservationService = inject(ReservationService);
   private readonly raffleService = inject(RaffleService);
   private readonly ws = inject(WebSocketService);
+  private readonly notifications = inject(NotificationService);
   private readonly realtimeSubs = new Map<string, Subscription>();
 
-  protected readonly loading      = signal(true);
+  protected readonly loading = signal(true);
   protected readonly reservations = signal<OrganizerReservation[]>([]);
-  protected readonly raffles      = signal<RaffleListItem[]>([]);
-  protected readonly total        = signal(0);
-  protected readonly totalPages   = signal(0);
-  protected readonly page         = signal(0);
+  protected readonly raffles = signal<RaffleListItem[]>([]);
+  protected readonly total = signal(0);
+  protected readonly totalPages = signal(0);
+  protected readonly page = signal(0);
   protected readonly statusFilter = signal<StatusFilter>('ALL');
   protected readonly actionLoading = signal<string | null>(null);
   protected readonly phoneFilter = signal('');
-
+  protected readonly pendingAction = signal<ReservationAction>(null);
+  protected readonly selectedReservation = signal<OrganizerReservation | null>(null);
   protected readonly selectedRaffleId = signal<string | undefined>(undefined);
 
   protected readonly statusOptions: { value: StatusFilter; label: string }[] = [
-    { value: 'ALL',       label: 'Todas' },
-    { value: 'PENDING',   label: 'Pendientes' },
+    { value: 'ALL', label: 'Todas' },
+    { value: 'PENDING', label: 'Pendientes' },
     { value: 'CONFIRMED', label: 'Confirmadas' },
     { value: 'CANCELLED', label: 'Canceladas' },
-    { value: 'EXPIRED',   label: 'Expiradas' },
+    { value: 'EXPIRED', label: 'Expiradas' },
   ];
 
   ngOnInit(): void {
@@ -213,6 +241,7 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
       this.raffles.set(raffles);
       this.syncRealtimeSubscriptions(raffles);
     });
+
     this.route.queryParamMap.subscribe(params => {
       this.selectedRaffleId.set(params.get('raffleId') || undefined);
       this.phoneFilter.set(params.get('phone') || '');
@@ -234,6 +263,7 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
     this.loading.set(true);
     const sf = this.statusFilter();
     const status: ReservationStatus | undefined = sf === 'ALL' ? undefined : sf;
+
     this.reservationService
       .listOrganizerReservations(this.selectedRaffleId(), this.phoneFilter(), status, this.page())
       .subscribe({
@@ -247,51 +277,46 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
       });
   }
 
-  protected setStatus(s: StatusFilter): void {
-    this.statusFilter.set(s);
+  protected setStatus(status: StatusFilter): void {
+    this.statusFilter.set(status);
     this.page.set(0);
     this.load();
   }
 
-  protected onRaffleChange(e: Event): void {
-    const val = (e.target as HTMLSelectElement).value;
-    this.selectedRaffleId.set(val || undefined);
-    this.page.set(0);
-    this.syncQueryParams();
-    this.load();
-  }
-
-  protected onPhoneChange(e: Event): void {
-    this.phoneFilter.set((e.target as HTMLInputElement).value.trim());
+  protected onRaffleChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.selectedRaffleId.set(value || undefined);
     this.page.set(0);
     this.syncQueryParams();
     this.load();
   }
 
-  protected confirm(r: OrganizerReservation): void {
-    this.actionLoading.set(r.id);
-    this.reservationService.confirmReservation(r.id).subscribe({
-      next: updated => {
-        this.reservations.update(list => list.map(x => x.id === r.id ? updated : x));
-        this.actionLoading.set(null);
-      },
-      error: () => this.actionLoading.set(null),
-    });
+  protected onPhoneChange(event: Event): void {
+    this.phoneFilter.set((event.target as HTMLInputElement).value.trim());
+    this.page.set(0);
+    this.syncQueryParams();
+    this.load();
   }
 
-  protected cancel(r: OrganizerReservation): void {
-    this.actionLoading.set(r.id);
-    this.reservationService.cancelReservation(r.id).subscribe({
-      next: updated => {
-        this.reservations.update(list => list.map(x => x.id === r.id ? updated : x));
-        this.actionLoading.set(null);
-      },
-      error: () => this.actionLoading.set(null),
-    });
+  protected confirm(reservation: OrganizerReservation): void {
+    this.selectedReservation.set(reservation);
+    this.pendingAction.set('confirm');
   }
 
-  protected prevPage(): void { this.page.update(p => p - 1); this.load(); }
-  protected nextPage(): void { this.page.update(p => p + 1); this.load(); }
+  protected cancel(reservation: OrganizerReservation): void {
+    this.selectedReservation.set(reservation);
+    this.pendingAction.set('cancel');
+  }
+
+  protected prevPage(): void {
+    this.page.update(current => current - 1);
+    this.load();
+  }
+
+  protected nextPage(): void {
+    this.page.update(current => current + 1);
+    this.load();
+  }
 
   private syncRealtimeSubscriptions(raffles: RaffleListItem[]): void {
     const activeIds = new Set(raffles.map(raffle => raffle.id));
@@ -306,12 +331,13 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
     this.ws.connect().then(() => {
       for (const raffle of raffles) {
         if (this.realtimeSubs.has(raffle.id)) continue;
-        const sub = this.ws.subscribe<{ available: number; reserved: number; paid: number }>(`/topic/raffle/${raffle.id}/progress`)
+        const sub = this.ws
+          .subscribe<{ available: number; reserved: number; paid: number }>(`/topic/raffle/${raffle.id}/progress`)
           .subscribe(() => this.load());
         this.realtimeSubs.set(raffle.id, sub);
       }
     }).catch(() => {
-      // ignore realtime failures here; manual reload still works
+      // Ignore realtime failures; manual reload still works.
     });
   }
 
@@ -327,20 +353,76 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
     });
   }
 
-  protected formatDate(dt: string): string {
-    return new Date(dt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  protected formatDate(dateTime: string): string {
+    return new Date(dateTime).toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
-  protected statusCls(s: ReservationStatus): string {
-    return ({
-      PENDING:   'bg-warning text-dark',
-      CONFIRMED: 'bg-success text-white',
-      CANCELLED: 'bg-danger text-white',
-      EXPIRED:   'bg-secondary text-white',
-    })[s] ?? 'bg-secondary text-white';
+  protected closeDialog(): void {
+    this.pendingAction.set(null);
+    this.selectedReservation.set(null);
+    this.actionLoading.set(null);
   }
 
-  protected statusLabel(s: ReservationStatus): string {
-    return ({ PENDING: 'Pendiente', CONFIRMED: 'Confirmada', CANCELLED: 'Cancelada', EXPIRED: 'Expirada' })[s] ?? s;
+  protected confirmItems(): ConfirmDialogItem[] {
+    const reservation = this.selectedReservation();
+    if (!reservation) return [];
+
+    return [
+      { icon: 'bi bi-hash', color: '#818cf8', text: `Numeros: ${reservation.numbers.join(', ')}` },
+      { icon: 'bi bi-cash-stack', color: '#10b981', text: `Total: ${reservation.totalAmount}` },
+      { icon: 'bi bi-check2-all', color: '#06b6d4', text: 'La reserva pasara a confirmada' },
+    ];
+  }
+
+  protected cancelItems(): ConfirmDialogItem[] {
+    const reservation = this.selectedReservation();
+    if (!reservation) return [];
+
+    return [
+      { icon: 'bi bi-hash', color: '#f59e0b', text: `Numeros: ${reservation.numbers.join(', ')}` },
+      { icon: 'bi bi-unlock-fill', color: '#f87171', text: 'Los numeros volveran a estar disponibles' },
+      { icon: 'bi bi-archive-fill', color: '#94a3b8', text: 'La reserva quedara cancelada' },
+    ];
+  }
+
+  protected confirmSelected(): void {
+    const reservation = this.selectedReservation();
+    if (!reservation) return;
+
+    this.actionLoading.set(reservation.id);
+    this.reservationService.confirmReservation(reservation.id).subscribe({
+      next: updated => {
+        this.reservations.update(list => list.map(item => item.id === reservation.id ? updated : item));
+        this.notifications.success('Reserva confirmada', `Se confirmo la reserva de ${reservation.participantName}.`);
+        this.closeDialog();
+      },
+      error: () => {
+        this.actionLoading.set(null);
+        this.notifications.error('No se pudo confirmar la reserva');
+      },
+    });
+  }
+
+  protected cancelSelected(): void {
+    const reservation = this.selectedReservation();
+    if (!reservation) return;
+
+    this.actionLoading.set(reservation.id);
+    this.reservationService.cancelReservation(reservation.id).subscribe({
+      next: updated => {
+        this.reservations.update(list => list.map(item => item.id === reservation.id ? updated : item));
+        this.notifications.success('Reserva cancelada', `Se cancelo la reserva de ${reservation.participantName}.`);
+        this.closeDialog();
+      },
+      error: () => {
+        this.actionLoading.set(null);
+        this.notifications.error('No se pudo cancelar la reserva');
+      },
+    });
   }
 }

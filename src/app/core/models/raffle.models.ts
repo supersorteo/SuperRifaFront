@@ -92,6 +92,7 @@ export interface RaffleListItem {
   id: string;
   title: string;
   slug: string;
+  reservationAccessCode?: string;
   prizeName?: string;
   participantCount: number;
   reservedCount: number;

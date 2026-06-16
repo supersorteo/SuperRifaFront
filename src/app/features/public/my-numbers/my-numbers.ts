@@ -4,13 +4,13 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { ParticipantLookupResult, ReservationStatus } from '../../../core/models/reservation.models';
+import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 
 @Component({
   selector: 'app-my-numbers',
-  imports: [FormsModule, RouterLink, CurrencyArPipe],
+  imports: [FormsModule, RouterLink, CurrencyArPipe, StatusBadge],
   template: `
     <div class="container py-5" style="max-width:680px">
-
       <div class="text-center mb-5">
         <div class="mb-3">
           <i class="bi bi-ticket-perforated-fill text-primary" style="font-size:3rem"></i>
@@ -19,7 +19,6 @@ import { ParticipantLookupResult, ReservationStatus } from '../../../core/models
         <p class="text-muted">Consultá el estado de tus reservas ingresando tu teléfono</p>
       </div>
 
-      <!-- Form -->
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-body p-4">
           <form (ngSubmit)="search()" #f="ngForm">
@@ -54,7 +53,6 @@ import { ParticipantLookupResult, ReservationStatus } from '../../../core/models
         </div>
       </div>
 
-      <!-- Error -->
       @if (notFound()) {
         <div class="alert alert-warning d-flex align-items-center gap-2">
           <i class="bi bi-exclamation-triangle-fill"></i>
@@ -62,7 +60,6 @@ import { ParticipantLookupResult, ReservationStatus } from '../../../core/models
         </div>
       }
 
-      <!-- Results -->
       @if (result()) {
         <div class="mb-3">
           <h5 class="fw-bold mb-0">
@@ -76,9 +73,7 @@ import { ParticipantLookupResult, ReservationStatus } from '../../../core/models
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
-                  <span class="badge rounded-pill fw-semibold" [class]="statusCls(r.status)">
-                    {{ statusLabel(r.status) }}
-                  </span>
+                  <app-status-badge category="reservation" [value]="r.status" [label]="reservationLabel(r.status)"></app-status-badge>
                 </div>
                 <div class="text-end">
                   <div class="fw-bold text-success">{{ r.totalAmount | currencyAr }}</div>
@@ -86,7 +81,6 @@ import { ParticipantLookupResult, ReservationStatus } from '../../../core/models
                 </div>
               </div>
 
-              <!-- Numbers -->
               <div class="d-flex flex-wrap gap-2 mb-3">
                 @for (n of r.numbers; track n) {
                   <span class="badge rounded-pill fw-bold px-3 py-2"
@@ -121,7 +115,6 @@ import { ParticipantLookupResult, ReservationStatus } from '../../../core/models
           </a>
         </div>
       }
-
     </div>
   `
 })
@@ -130,11 +123,11 @@ export class MyNumbers implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   protected phone = '';
-  protected slug  = '';
+  protected slug = '';
 
-  protected readonly loading  = signal(false);
+  protected readonly loading = signal(false);
   protected readonly notFound = signal(false);
-  protected readonly result   = signal<ParticipantLookupResult | null>(null);
+  protected readonly result = signal<ParticipantLookupResult | null>(null);
   protected readonly slugFromUrl = signal(false);
 
   ngOnInit(): void {
@@ -163,14 +156,21 @@ export class MyNumbers implements OnInit {
   }
 
   protected formatDate(dt: string): string {
-    return new Date(dt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(dt).toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
-  protected statusCls(s: ReservationStatus): string {
-    return ({ PENDING: 'bg-warning text-dark', CONFIRMED: 'bg-success text-white', CANCELLED: 'bg-danger text-white', EXPIRED: 'bg-secondary text-white' })[s] ?? 'bg-secondary text-white';
-  }
-
-  protected statusLabel(s: ReservationStatus): string {
-    return ({ PENDING: 'Pendiente de pago', CONFIRMED: 'Confirmada ✓', CANCELLED: 'Cancelada', EXPIRED: 'Expirada' })[s] ?? s;
+  protected reservationLabel(s: ReservationStatus): string {
+    return ({
+      PENDING: 'Pendiente de pago',
+      CONFIRMED: 'Confirmada ✓',
+      CANCELLED: 'Cancelada',
+      EXPIRED: 'Expirada',
+    })[s] ?? s;
   }
 }

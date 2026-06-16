@@ -11,6 +11,7 @@ import { WebSocketService } from '../../../core/services/websocket.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
 import { NumberInfo, NumberStatus, RafflePublicResponse } from '../../../core/models/raffle.models';
 import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/live-draw-overlay';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-raffle-detail',
@@ -24,6 +25,7 @@ import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/li
       [winnerNumber]="liveWinnerNumber()"
       [winnerName]="raffle()?.winnerName || ''" />
 
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
     <header class="rd-header">
       <div class="rd-header__inner">
         <span class="rd-logo">
@@ -32,27 +34,30 @@ import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/li
         </span>
         @if (raffle()) {
           <a [routerLink]="['/mis-numeros']" [queryParams]="{ slug: raffle()!.slug }"
-             class="btn btn-sm btn-outline-light rounded-pill px-3">
-            <i class="bi bi-ticket-perforated me-1"></i>Consultar mis numeros
+             class="rd-btn-outline">
+            <i class="bi bi-ticket-perforated"></i>
+            <span>Mis números</span>
           </a>
         }
       </div>
     </header>
 
+    <!-- ── Loading ─────────────────────────────────────────────────────── -->
     @if (loading()) {
-      <div class="d-flex justify-content-center align-items-center" style="min-height:70vh">
-        <div class="text-center">
-          <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem" role="status">
-            <span class="visually-hidden">Cargando...</span>
-          </div>
-          <p class="text-muted">Cargando rifa...</p>
+      <div class="rd-loader">
+        <div class="rd-loader__spinner" role="status" aria-label="Cargando">
+          <div class="rd-spinner"></div>
         </div>
+        <p class="rd-loader__text">Cargando rifa...</p>
       </div>
     }
 
+    <!-- ── Main content ────────────────────────────────────────────────── -->
     @if (!loading() && raffle()) {
+
+      <!-- Carousel -->
       @if (allImages().length > 0) {
-        <div class="rd-carousel">
+        <div class="rd-carousel" aria-label="Imágenes del premio">
           <div class="rd-carousel__track">
             <img [src]="allImages()[activeImg()].url"
                  [alt]="allImages()[activeImg()].altText || raffle()!.title"
@@ -60,129 +65,192 @@ import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/li
             <div class="rd-carousel__overlay"></div>
           </div>
 
+          <!-- Raffle title floating at bottom of carousel -->
+          <div class="rd-carousel__caption">
+            <div class="rd-carousel__caption-inner">
+              <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span [class]="statusBadgeClass()">{{ operationalLabel() }}</span>
+                @if (raffle()!.winnerNumber) {
+                  <span class="rd-badge rd-badge--gold">
+                    <i class="bi bi-trophy-fill"></i>Ganador: #{{ raffle()!.winnerNumber }}
+                  </span>
+                }
+              </div>
+              <h1 class="rd-carousel__title">{{ raffle()!.title }}</h1>
+              <div class="d-flex align-items-center gap-3 flex-wrap">
+                <span class="rd-carousel__price">{{ raffle()!.pricePerNumber | currencyAr }} por número</span>
+                @if (raffle()!.drawDateTime) {
+                  <span class="rd-carousel__meta">
+                    <i class="bi bi-calendar3"></i>{{ formatDate(raffle()!.drawDateTime!) }}
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
           @if (allImages().length > 1) {
-            <button class="rd-carousel__btn rd-carousel__btn--prev" (click)="prevImg()" aria-label="Anterior">
+            <button class="rd-carousel__btn rd-carousel__btn--prev" (click)="prevImg()" aria-label="Imagen anterior">
               <i class="bi bi-chevron-left"></i>
             </button>
-            <button class="rd-carousel__btn rd-carousel__btn--next" (click)="nextImg()" aria-label="Siguiente">
+            <button class="rd-carousel__btn rd-carousel__btn--next" (click)="nextImg()" aria-label="Imagen siguiente">
               <i class="bi bi-chevron-right"></i>
             </button>
-            <div class="rd-carousel__dots">
+            <div class="rd-carousel__dots" role="tablist" aria-label="Imágenes">
               @for (img of allImages(); track $index) {
                 <button class="rd-carousel__dot" [class.rd-carousel__dot--active]="$index === activeImg()"
-                        (click)="activeImg.set($index)" [attr.aria-label]="'Imagen ' + ($index + 1)"></button>
+                        (click)="activeImg.set($index)"
+                        role="tab"
+                        [attr.aria-selected]="$index === activeImg()"
+                        [attr.aria-label]="'Imagen ' + ($index + 1)"></button>
               }
             </div>
           }
         </div>
       }
 
-      <section class="hero-gradient text-white">
-        <div class="container py-4">
-          <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
-            <span [class]="statusBadgeClass()">{{ operationalLabel() }}</span>
-            @if (raffle()!.drawDateTime) {
-              <span class="badge bg-white bg-opacity-20 text-white">
-                <i class="bi bi-calendar3 me-1"></i>{{ formatDate(raffle()!.drawDateTime!) }}
-              </span>
-            }
-            @if (raffle()!.winnerNumber) {
-              <span class="badge bg-warning text-dark fw-semibold">
-                <i class="bi bi-trophy-fill me-1"></i>Ganador: {{ raffle()!.winnerNumber }}
-              </span>
-            }
-          </div>
-          <h1 class="fw-bold display-6 mb-2">{{ raffle()!.title }}</h1>
-          @if (raffle()!.description) {
-            <p class="opacity-75 mb-3">{{ raffle()!.description }}</p>
-          }
-          <div class="d-flex flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-1">
-              <i class="bi bi-hash"></i>
-              <span class="fw-semibold">{{ raffle()!.totalNumbers }} numeros</span>
+      <!-- No carousel: show info as hero strip -->
+      @if (allImages().length === 0) {
+        <div class="rd-hero-strip hero-gradient text-white">
+          <div class="container py-4">
+            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+              <span [class]="statusBadgeClass()">{{ operationalLabel() }}</span>
+              @if (raffle()!.winnerNumber) {
+                <span class="rd-badge rd-badge--gold">
+                  <i class="bi bi-trophy-fill"></i>Ganador: #{{ raffle()!.winnerNumber }}
+                </span>
+              }
             </div>
-            <div class="d-flex align-items-center gap-1">
-              <i class="bi bi-currency-exchange"></i>
-              <span class="fw-semibold">{{ raffle()!.pricePerNumber | currencyAr }} c/u</span>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <i class="bi bi-person-circle"></i>
-              <span>{{ raffle()!.organizer.displayName }}</span>
+            <h1 class="fw-black display-6 mb-2" style="letter-spacing:-0.03em">{{ raffle()!.title }}</h1>
+            @if (raffle()!.description) {
+              <p class="opacity-75 mb-3">{{ raffle()!.description }}</p>
+            }
+            <div class="d-flex flex-wrap gap-3 opacity-90">
+              <span class="d-flex align-items-center gap-1 small fw-semibold">
+                <i class="bi bi-hash"></i>{{ raffle()!.totalNumbers }} números
+              </span>
+              <span class="d-flex align-items-center gap-1 small fw-semibold">
+                <i class="bi bi-currency-exchange"></i>{{ raffle()!.pricePerNumber | currencyAr }} c/u
+              </span>
             </div>
           </div>
         </div>
-      </section>
+      }
 
+      <!-- Info strip below carousel -->
+      @if (allImages().length > 0 && raffle()!.description) {
+        <div class="rd-desc-strip">
+          <div class="container">
+            <p class="mb-0 text-muted" style="font-size:.95rem">{{ raffle()!.description }}</p>
+          </div>
+        </div>
+      }
+
+      <!-- Prize card -->
       @if (raffle()!.prize) {
-        <div class="bg-white border-bottom">
-          <div class="container py-3">
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-              @if (raffle()!.prize!.imageUrl) {
-                <img [src]="raffle()!.prize!.imageUrl" [alt]="raffle()!.prize!.name"
-                     class="rounded-3 object-fit-cover flex-shrink-0"
-                     style="width:80px;height:80px">
-              } @else {
-                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:80px;height:80px;background:#fef3c7">
-                  <i class="bi bi-trophy-fill text-warning" style="font-size:2rem"></i>
-                </div>
-              }
-              <div>
-                <div class="text-muted small fw-semibold text-uppercase mb-1" style="letter-spacing:.06em">
-                  <i class="bi bi-trophy-fill text-warning me-1"></i>Premio
-                </div>
-                <div class="fw-bold fs-5">{{ raffle()!.prize!.name }}</div>
-                @if (raffle()!.prize!.estimatedValue) {
-                  <div class="text-success fw-bold">Valor: {{ raffle()!.prize!.estimatedValue | currencyAr }}</div>
+        <div class="rd-prize-wrap">
+          <div class="container">
+            <div class="rd-prize-card">
+              <div class="rd-prize-card__glow"></div>
+              <div class="rd-prize-card__inner">
+                @if (raffle()!.prize!.imageUrl) {
+                  <img [src]="raffle()!.prize!.imageUrl" [alt]="raffle()!.prize!.name"
+                       class="rd-prize-card__img">
+                } @else {
+                  <div class="rd-prize-card__icon">
+                    <i class="bi bi-trophy-fill"></i>
+                  </div>
                 }
-                @if (raffle()!.prize!.description) {
-                  <div class="text-muted small">{{ raffle()!.prize!.description }}</div>
-                }
+                <div class="rd-prize-card__body">
+                  <div class="rd-prize-card__label">
+                    <i class="bi bi-trophy-fill"></i>Premio principal
+                  </div>
+                  <div class="rd-prize-card__name">{{ raffle()!.prize!.name }}</div>
+                  @if (raffle()!.prize!.estimatedValue) {
+                    <div class="rd-prize-card__value">
+                      Valor estimado: <strong>{{ raffle()!.prize!.estimatedValue | currencyAr }}</strong>
+                    </div>
+                  }
+                  @if (raffle()!.prize!.description) {
+                    <div class="rd-prize-card__desc">{{ raffle()!.prize!.description }}</div>
+                  }
+                </div>
               </div>
             </div>
           </div>
         </div>
       }
 
-      <div class="bg-white shadow-sm py-3">
+      <!-- Progress strip -->
+      <div class="rd-progress-strip">
         <div class="container">
           <div class="row g-3 align-items-center">
-            <div class="col-md-8">
-              <div class="d-flex justify-content-between small text-muted mb-1">
-                <span><i class="bi bi-check-circle-fill text-success me-1"></i>{{ paidCount() }} pagados</span>
-                <span><i class="bi bi-clock text-warning me-1"></i>{{ reservedCount() }} reservados</span>
-                <span><i class="bi bi-circle text-secondary me-1"></i>{{ availableCount() }} disponibles</span>
+            <div class="col-md-9">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex gap-4 flex-wrap">
+                  <span class="rd-stat rd-stat--green">
+                    <i class="bi bi-check-circle-fill"></i>{{ paidCount() }} confirmados
+                  </span>
+                  <span class="rd-stat rd-stat--amber">
+                    <i class="bi bi-clock-fill"></i>{{ reservedCount() }} reservados
+                  </span>
+                  <span class="rd-stat rd-stat--gray">
+                    <i class="bi bi-circle"></i>{{ availableCount() }} disponibles
+                  </span>
+                </div>
               </div>
-              <div class="progress" style="height:10px" role="progressbar"
+              <div class="rd-progress-bar" role="progressbar"
                    [attr.aria-valuenow]="soldPercent()"
                    aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar bg-success" [style.width.%]="paidPercent()"></div>
-                <div class="progress-bar bg-warning" [style.width.%]="reservedPercent()"></div>
+                <div class="rd-progress-bar__paid"   [style.width.%]="paidPercent()"></div>
+                <div class="rd-progress-bar__reserved" [style.width.%]="reservedPercent()"></div>
               </div>
             </div>
-            <div class="col-md-4 text-md-end">
-              <span class="fw-bold fs-5 text-primary">{{ soldPercent() | number:'1.0-0' }}% vendido</span>
+            <div class="col-md-3 text-md-end">
+              <span class="rd-sold-pct text-gradient">
+                {{ soldPercent() | number:'1.0-0' }}% vendido
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="container py-4">
+      <!-- Main: grid + form -->
+      <div class="container rd-main-wrap">
         <div class="row g-4">
+
+          <!-- Number grid -->
           <div class="col-lg-8">
-            <div class="card border-0 shadow-sm">
-              <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="mb-0 fw-semibold">
-                  <i class="bi bi-grid-3x3-gap me-2 text-primary"></i>Elegi tus numeros
-                </h5>
-                <div class="d-flex gap-3 small">
-                  <span><span class="number-cell number-cell--available d-inline-flex" style="width:24px;height:24px;font-size:.6rem">1</span> Disponible</span>
-                  <span><span class="number-cell number-cell--selected d-inline-flex" style="width:24px;height:24px;font-size:.6rem">2</span> Seleccionado</span>
-                  <span><span class="number-cell number-cell--paid d-inline-flex" style="width:24px;height:24px;font-size:.6rem">3</span> Reservado</span>
-                  <span><span class="number-cell number-cell--winner d-inline-flex" style="width:24px;height:24px;font-size:.6rem">4</span> Ganador</span>
+            <div class="rd-grid-card">
+              <!-- Grid header -->
+              <div class="rd-grid-card__header">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="rd-grid-card__icon-wrap">
+                    <i class="bi bi-grid-3x3-gap-fill"></i>
+                  </div>
+                  <div>
+                    <div class="rd-grid-card__title">Elegí tus números</div>
+                    <div class="rd-grid-card__sub">{{ availableCount() }} disponibles de {{ totalNumbers() }}</div>
+                  </div>
+                </div>
+                <!-- Legend -->
+                <div class="rd-legend">
+                  <span class="rd-legend__item">
+                    <span class="rd-legend__dot rd-legend__dot--available"></span>Libre
+                  </span>
+                  <span class="rd-legend__item">
+                    <span class="rd-legend__dot rd-legend__dot--selected"></span>Elegido
+                  </span>
+                  <span class="rd-legend__item">
+                    <span class="rd-legend__dot rd-legend__dot--paid"></span>Vendido
+                  </span>
+                  <span class="rd-legend__item">
+                    <span class="rd-legend__dot rd-legend__dot--winner"></span>Ganador
+                  </span>
                 </div>
               </div>
-              <div class="card-body p-3">
+
+              <!-- Grid body -->
+              <div class="rd-grid-card__body">
                 <div class="number-grid">
                   @for (n of numbers(); track n.number) {
                     <button
@@ -190,237 +258,787 @@ import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/li
                       [class]="'number-cell number-cell--' + cellClass(n)"
                       [disabled]="!isAvailable(n)"
                       (click)="toggleNumber(n.number)"
-                      [attr.aria-label]="'Numero ' + n.number + ' ' + n.status"
+                      [attr.aria-label]="'Número ' + n.number + ', ' + n.status"
                       [attr.aria-pressed]="isSelected(n.number)">
                       {{ n.number }}
                     </button>
                   }
                 </div>
               </div>
+
+              <!-- Selected footer -->
               @if (selected().length > 0) {
-                <div class="card-footer bg-primary bg-opacity-10 border-top-0 d-flex justify-content-between align-items-center">
-                  <span class="fw-semibold text-primary">
-                    {{ selected().length }} numero{{ selected().length !== 1 ? 's' : '' }} seleccionado{{ selected().length !== 1 ? 's' : '' }}
-                  </span>
-                  <span class="fw-bold text-primary fs-5">
-                    {{ totalPrice() | currencyAr }}
-                  </span>
+                <div class="rd-grid-card__footer">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="rd-grid-card__footer-label">
+                      {{ selected().length }} número{{ selected().length !== 1 ? 's' : '' }}
+                    </span>
+                    <div class="d-flex flex-wrap gap-1">
+                      @for (n of selected(); track n) {
+                        <span class="rd-num-chip">{{ n }}</span>
+                      }
+                    </div>
+                  </div>
+                  <span class="rd-grid-card__footer-price">{{ totalPrice() | currencyAr }}</span>
                 </div>
               }
             </div>
           </div>
 
+          <!-- Sidebar: form + organizer -->
           <div class="col-lg-4">
-            <div class="card border-0 shadow-sm sticky-top" style="top:1rem">
-              <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0 fw-semibold">
-                  <i class="bi bi-cart3 me-2 text-primary"></i>Reservar
-                </h5>
-              </div>
-              <div class="card-body">
-                @if (selected().length === 0) {
-                  <div class="text-center text-muted py-3">
-                    <i class="bi bi-cursor-fill fs-2 d-block mb-2 opacity-50"></i>
-                    Selecciona al menos un numero para continuar
+
+            <!-- Reserve card -->
+            <div class="rd-reserve-card sticky-top" style="top:80px">
+
+              <!-- Empty state -->
+              @if (selected().length === 0) {
+                <div class="rd-reserve-card__empty">
+                  <div class="rd-reserve-card__empty-icon">
+                    <i class="bi bi-hand-index-thumb-fill"></i>
+                  </div>
+                  <div class="rd-reserve-card__empty-title">Elegí un número</div>
+                  <div class="rd-reserve-card__empty-sub">
+                    Tocá cualquier número disponible en la grilla para agregarlo a tu reserva
+                  </div>
+                </div>
+              }
+
+              <!-- Form -->
+              @if (selected().length > 0) {
+
+                <!-- Success -->
+                @if (reservationSuccess()) {
+                  <div class="rd-success">
+                    <div class="rd-success__icon">
+                      <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div class="rd-success__title">¡Reserva creada!</div>
+                    <p class="rd-success__sub">
+                      Tu reserva expira en 30 minutos. Contactá al organizador para confirmar el pago.
+                    </p>
                   </div>
                 } @else {
-                  @if (reservationSuccess()) {
-                    <div class="alert alert-success text-center">
-                      <i class="bi bi-check-circle-fill fs-3 d-block mb-2"></i>
-                      <strong>Reserva creada</strong>
-                      <p class="mb-0 small mt-1">Tu reserva expira en 30 minutos. Contacta al organizador para confirmar el pago.</p>
+
+                  <!-- Selection summary -->
+                  <div class="rd-summary">
+                    <div class="rd-summary__label">Tus números</div>
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                      @for (n of selected(); track n) {
+                        <span class="rd-num-chip rd-num-chip--lg">{{ n }}</span>
+                      }
                     </div>
-                  } @else {
-                    @if (reservationError()) {
-                      <div class="alert alert-danger py-2 small mb-3">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ reservationError() }}
+                    <div class="d-flex justify-content-between align-items-baseline">
+                      <span class="rd-summary__sub">Total a pagar</span>
+                      <span class="rd-summary__price text-gradient">{{ totalPrice() | currencyAr }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Error alert -->
+                  @if (reservationError()) {
+                    <div class="rd-alert rd-alert--danger mb-3" role="alert">
+                      <i class="bi bi-exclamation-triangle-fill"></i>
+                      {{ reservationError() }}
+                    </div>
+                  }
+
+                  <form [formGroup]="reserveForm" (ngSubmit)="submitReservation()">
+                    <div formGroupName="participant" class="rd-form-section">
+                      <div class="rd-form-section__title">Tus datos</div>
+
+                      <div class="mb-3">
+                        <label class="rd-label" for="fullName">Nombre completo *</label>
+                        <input id="fullName" type="text" class="form-control"
+                               formControlName="fullName" autocomplete="name"
+                               placeholder="Juan Pérez"
+                               [class.is-invalid]="rtouched('fullName') && reserveForm.get('participant.fullName')?.invalid">
+                        <div class="invalid-feedback">Requerido</div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="rd-label" for="rPhone">
+                          <i class="bi bi-whatsapp text-success me-1"></i>Teléfono / WhatsApp *
+                        </label>
+                        <input id="rPhone" type="tel" class="form-control"
+                               formControlName="phone" autocomplete="tel"
+                               placeholder="+54 9 11 1234-5678"
+                               [class.is-invalid]="rtouched('phone') && reserveForm.get('participant.phone')?.invalid">
+                        <div class="invalid-feedback">Requerido</div>
+                      </div>
+
+                      <div class="mb-2">
+                        <label class="rd-label" for="rEmail">Email <span class="rd-label--opt">(opcional)</span></label>
+                        <input id="rEmail" type="email" class="form-control"
+                               formControlName="email" autocomplete="email"
+                               placeholder="juan@email.com">
+                      </div>
+                    </div>
+
+                    <!-- Access code -->
+                    <div class="rd-form-section">
+                      <div class="rd-form-section__title">Código de acceso</div>
+                      <label class="rd-label" for="accessCode">Código del organizador</label>
+                      <input id="accessCode" type="text" class="form-control"
+                             formControlName="accessCode"
+                             placeholder="Ej: RIFA-123456"
+                             [class.is-invalid]="reserveForm.get('accessCode')?.touched && reserveForm.get('accessCode')?.invalid">
+                      <div class="form-text mt-1" style="font-size:.78rem">
+                        <i class="bi bi-info-circle me-1 text-primary"></i>
+                        El organizador te lo comparte por WhatsApp o redes
+                      </div>
+                    </div>
+
+                    <!-- Payment methods -->
+                    @if (raffle()!.paymentMethods.length > 0) {
+                      <div class="rd-form-section">
+                        <div class="rd-form-section__title">Método de pago</div>
+                        @for (pm of raffle()!.paymentMethods; track pm.displayName) {
+                          <div class="rd-pm-card"
+                               [class.rd-pm-card--active]="selectedPaymentMethod() === pm.displayName"
+                               (click)="selectedPaymentMethod.set(pm.displayName)"
+                               role="radio"
+                               [attr.aria-checked]="selectedPaymentMethod() === pm.displayName"
+                               tabindex="0"
+                               (keydown.enter)="selectedPaymentMethod.set(pm.displayName)"
+                               (keydown.space)="selectedPaymentMethod.set(pm.displayName)">
+                            <div class="rd-pm-card__head">
+                              <i class="bi" [class]="pmIcon(pm.type)" style="font-size:1.1rem"></i>
+                              <span class="fw-semibold">{{ pm.displayName }}</span>
+                              <i class="bi bi-check-circle-fill rd-pm-card__check ms-auto"></i>
+                            </div>
+                            @if (pm.alias) {
+                              <div class="rd-pm-card__detail">Alias: <strong>{{ pm.alias }}</strong></div>
+                            }
+                            @if (pm.cbuCvu) {
+                              <div class="rd-pm-card__detail">CBU/CVU: {{ pm.cbuCvu }}</div>
+                            }
+                            @if (pm.accountHolder) {
+                              <div class="rd-pm-card__detail">Titular: {{ pm.accountHolder }}</div>
+                            }
+                            @if (pm.instructions) {
+                              <div class="rd-pm-card__detail rd-pm-card__detail--note">
+                                <i class="bi bi-chat-left-text me-1"></i>{{ pm.instructions }}
+                              </div>
+                            }
+                          </div>
+                        }
                       </div>
                     }
 
-                    <div class="bg-light rounded p-3 mb-3">
-                      <div class="small text-muted mb-1">Numeros seleccionados</div>
-                      <div class="d-flex flex-wrap gap-1">
-                        @for (n of selected(); track n) {
-                          <span class="badge bg-primary">{{ n }}</span>
-                        }
+                    <!-- Payment form (mock checkout) -->
+                    <div formGroupName="payment" class="rd-form-section">
+                      <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="rd-form-section__title mb-0">Pago</div>
+                        <span class="badge rounded-pill fw-semibold"
+                              style="background:rgba(99,102,241,0.1);color:#6366f1;font-size:.7rem;border:1px solid rgba(99,102,241,0.15)">
+                          Simulación visual
+                        </span>
                       </div>
-                      <div class="d-flex justify-content-between mt-2">
-                        <span class="small text-muted">Total</span>
-                        <span class="fw-bold text-primary">{{ totalPrice() | currencyAr }}</span>
+
+                      <!-- Mock MP card -->
+                      <div class="rd-mp-card mb-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <div>
+                            <div class="small opacity-75 mb-0">Mercado Pago</div>
+                            <div class="fw-bold">Pago online simulado</div>
+                          </div>
+                          <i class="bi bi-credit-card-2-front-fill" style="font-size:1.8rem;opacity:.9"></i>
+                        </div>
+                        <div class="small mt-2 opacity-65">
+                          Integración anticipada · No procesa cobros reales
+                        </div>
                       </div>
+
+                      <div class="mb-2">
+                        <label class="rd-label">Canal de pago</label>
+                        <select class="form-select" formControlName="method">
+                          <option value="MERCADO_PAGO">Mercado Pago</option>
+                          <option value="TRANSFERENCIA">Transferencia bancaria</option>
+                          <option value="MANUAL">Pago manual / efectivo</option>
+                        </select>
+                      </div>
+
+                      <div class="mb-2">
+                        <label class="rd-label" for="payerName">
+                          Titular del pago <span class="rd-label--opt">(opcional)</span>
+                        </label>
+                        <input id="payerName" type="text" class="form-control"
+                               formControlName="payerName"
+                               placeholder="Nombre del titular">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="rd-label" for="payRef">
+                          Referencia / comprobante <span class="rd-label--opt">(opcional)</span>
+                        </label>
+                        <input id="payRef" type="text" class="form-control"
+                               formControlName="reference"
+                               placeholder="Operación, referencia o nota">
+                      </div>
+
+                      <div class="form-check mb-3">
+                        <input id="paidCheck" class="form-check-input" type="checkbox" formControlName="paid">
+                        <label class="form-check-label small fw-medium" for="paidCheck">
+                          Ya realicé o simulé el pago
+                        </label>
+                      </div>
+
+                      <button type="button"
+                              class="btn btn-sm rounded-pill fw-semibold px-3 mb-1"
+                              style="background:rgba(0,110,212,0.1);color:#006ed4;border:1px solid rgba(0,110,212,0.2)">
+                        <i class="bi bi-wallet2 me-1"></i>Pagar con Mercado Pago
+                      </button>
                     </div>
 
-                    <form [formGroup]="reserveForm" (ngSubmit)="submitReservation()">
-                      <div formGroupName="participant">
-                        <div class="mb-2">
-                          <label class="form-label small fw-medium" for="fullName">Nombre completo *</label>
-                          <input id="fullName" type="text" class="form-control form-control-sm"
-                                 formControlName="fullName" autocomplete="name"
-                                 [class.is-invalid]="rtouched('fullName') && reserveForm.get('participant.fullName')?.invalid">
-                        </div>
-                        <div class="mb-2">
-                          <label class="form-label small fw-medium" for="rPhone">Telefono / WhatsApp *</label>
-                          <input id="rPhone" type="tel" class="form-control form-control-sm"
-                                 formControlName="phone" autocomplete="tel"
-                                 placeholder="+54 9 11 ..."
-                                 [class.is-invalid]="rtouched('phone') && reserveForm.get('participant.phone')?.invalid">
-                        </div>
-                        <div class="mb-3">
-                          <label class="form-label small fw-medium" for="rEmail">Email (opcional)</label>
-                          <input id="rEmail" type="email" class="form-control form-control-sm"
-                                 formControlName="email" autocomplete="email">
-                        </div>
-                      </div>
-
-                      @if (raffle()!.paymentMethods.length > 0) {
-                        <div class="mb-3">
-                          <label class="form-label small fw-medium">Metodo de pago</label>
-                          @for (pm of raffle()!.paymentMethods; track pm.displayName) {
-                            <div class="border rounded p-2 mb-1"
-                                 style="cursor:pointer"
-                                 [class.border-primary]="selectedPaymentMethod() === pm.displayName"
-                                 (click)="selectedPaymentMethod.set(pm.displayName)"
-                                 role="radio"
-                                 [attr.aria-checked]="selectedPaymentMethod() === pm.displayName">
-                              <div class="d-flex align-items-center gap-2">
-                                <i class="bi" [class]="pmIcon(pm.type)"></i>
-                                <span class="small fw-medium">{{ pm.displayName }}</span>
-                              </div>
-                              @if (pm.alias) {
-                                <div class="small text-muted ps-4">Alias: {{ pm.alias }}</div>
-                              }
-                              @if (pm.cbuCvu) {
-                                <div class="small text-muted ps-4">CBU/CVU: {{ pm.cbuCvu }}</div>
-                              }
-                              @if (pm.accountHolder) {
-                                <div class="small text-muted ps-4">Titular: {{ pm.accountHolder }}</div>
-                              }
-                              @if (pm.instructions) {
-                                <div class="small text-muted ps-4 fst-italic mt-1">{{ pm.instructions }}</div>
-                              }
-                            </div>
-                          }
-                        </div>
+                    <!-- Submit -->
+                    <button type="submit"
+                            class="btn btn-gradient w-100 py-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2"
+                            style="font-size:1rem"
+                            [disabled]="reserving() || raffle()!.operationalStatus === 'EXECUTING' || raffle()!.operationalStatus === 'FINISHED'">
+                      @if (reserving()) {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        Reservando...
+                      } @else {
+                        <i class="bi bi-lock-fill"></i>Reservar {{ selected().length }} número{{ selected().length !== 1 ? 's' : '' }}
                       }
-
-                      <button type="submit" class="btn btn-primary w-100 fw-semibold"
-                              [disabled]="reserving() || raffle()!.operationalStatus === 'EXECUTING' || raffle()!.operationalStatus === 'FINISHED'">
-                        @if (reserving()) {
-                          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                        }
-                        <i class="bi bi-lock-fill me-1"></i>Reservar numeros
-                      </button>
-                    </form>
-                  }
+                    </button>
+                  </form>
                 }
-              </div>
+              }
             </div>
 
-            <div class="card border-0 shadow-sm mt-3">
-              <div class="card-body d-flex align-items-center gap-3">
+            <!-- Organizer card -->
+            <div class="rd-org-card mt-3">
+              <div class="rd-org-card__label">Organiza esta rifa</div>
+              <div class="d-flex align-items-center gap-3">
                 @if (raffle()!.organizer.avatarUrl) {
                   <img [src]="raffle()!.organizer.avatarUrl" alt="Organizador"
-                       class="rounded-circle object-fit-cover flex-shrink-0"
-                       style="width:48px;height:48px">
+                       class="rd-org-card__avatar">
                 } @else {
-                  <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
-                       style="width:48px;height:48px">
+                  <div class="rd-org-card__avatar rd-org-card__avatar--initial">
                     {{ raffle()!.organizer.displayName.charAt(0).toUpperCase() }}
                   </div>
                 }
                 <div>
-                  <div class="small text-muted">Organiza</div>
-                  <div class="fw-semibold">{{ raffle()!.organizer.displayName }}</div>
+                  <div class="fw-bold" style="font-size:.95rem">{{ raffle()!.organizer.displayName }}</div>
                   @if (raffle()!.organizer.whatsappNumber) {
                     <a [href]="'https://wa.me/' + raffle()!.organizer.whatsappNumber!.replace(/\\D/g, '')"
                        target="_blank" rel="noopener noreferrer"
-                       class="btn btn-sm btn-success mt-1">
-                      <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                       class="rd-wa-btn mt-2">
+                      <i class="bi bi-whatsapp"></i>Contactar por WhatsApp
                     </a>
                   }
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
+          </div><!-- /col sidebar -->
+        </div><!-- /row -->
+      </div><!-- /container -->
+
+      <!-- Footer -->
       <footer class="rd-footer">
-        <span>Powered by <strong>SuperRifa</strong></span>
+        <div class="rd-footer__inner">
+          <span class="rd-footer__brand">
+            <i class="bi bi-ticket-perforated-fill"></i>SuperRifa
+          </span>
+          <span class="rd-footer__powered">Plataforma de rifas digitales</span>
+        </div>
       </footer>
     }
 
+    <!-- Error: not found -->
     @if (!loading() && !raffle()) {
-      <div class="container py-5 text-center">
-        <i class="bi bi-ticket-x text-muted" style="font-size:4rem"></i>
-        <h3 class="mt-3 text-muted">Rifa no encontrada</h3>
-        <p class="text-muted">El enlace puede ser incorrecto o la rifa aun no esta disponible.</p>
+      <div class="rd-not-found">
+        <div class="rd-not-found__icon">
+          <i class="bi bi-ticket-x"></i>
+        </div>
+        <h3 class="rd-not-found__title">Rifa no encontrada</h3>
+        <p class="rd-not-found__sub">
+          El enlace puede ser incorrecto o la rifa aún no está disponible.
+        </p>
       </div>
     }
   `,
   styles: [`
-    :host { display: block; min-height: 100vh; background: #f8fafc; }
+    /* ── Host ─────────────────────────────────────── */
+    :host {
+      display: block;
+      min-height: 100vh;
+      background: #f3f4ff;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
 
+    /* ── Header ───────────────────────────────────── */
     .rd-header {
-      background: linear-gradient(135deg,#1e1b4b,#4f46e5);
-      padding: .75rem 1.25rem;
-      position: sticky; top: 0; z-index: 100;
+      background: rgba(9,9,11,0.92);
+      backdrop-filter: blur(16px) saturate(1.6);
+      -webkit-backdrop-filter: blur(16px) saturate(1.6);
+      border-bottom: 1px solid rgba(99,102,241,0.18);
+      padding: .7rem 1.25rem;
+      position: sticky; top: 0; z-index: 200;
     }
     .rd-header__inner {
-      max-width: 1140px; margin: 0 auto;
+      max-width: 1200px; margin: 0 auto;
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
     }
     .rd-logo {
-      display: flex; align-items: center; gap: .5rem;
-      color: #fff; text-decoration: none; font-weight: 800; font-size: 1.1rem;
+      display: flex; align-items: center; gap: .55rem;
+      color: #fff; font-weight: 800; font-size: 1.1rem;
+      letter-spacing: -0.025em;
     }
-    .rd-logo i { color: #fbbf24; font-size: 1.3rem; }
+    .rd-logo i {
+      font-size: 1.35rem;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .rd-btn-outline {
+      display: inline-flex; align-items: center; gap: .4rem;
+      color: rgba(255,255,255,.82); text-decoration: none; font-weight: 600; font-size: .82rem;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 999px;
+      padding: .38rem .9rem;
+      backdrop-filter: blur(8px);
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .rd-btn-outline:hover { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.3); }
 
+    /* ── Loading ──────────────────────────────────── */
+    .rd-loader {
+      min-height: 70vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem;
+    }
+    .rd-loader__spinner { position: relative; width: 56px; height: 56px; }
+    .rd-spinner {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 3px solid rgba(99,102,241,.15);
+      border-top-color: #6366f1;
+      animation: spin-slow 0.8s linear infinite;
+    }
+    .rd-loader__text { color: #71717a; font-weight: 500; font-size: .9rem; }
+
+    /* ── Carousel ─────────────────────────────────── */
     .rd-carousel {
       position: relative; width: 100%; overflow: hidden;
-      background: #0f172a; max-height: 420px;
+      background: #09090b; max-height: 520px;
     }
     .rd-carousel__track { width: 100%; }
     .rd-carousel__img {
-      width: 100%; height: 420px; object-fit: cover;
-      display: block; transition: opacity .3s;
+      width: 100%; height: 520px; object-fit: cover; display: block;
+      transition: opacity .45s ease;
     }
     .rd-carousel__overlay {
       position: absolute; inset: 0;
-      background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,.55) 100%);
+      background: linear-gradient(
+        to bottom,
+        rgba(9,9,11,0.08) 0%,
+        rgba(9,9,11,0.1) 30%,
+        rgba(9,9,11,0.65) 70%,
+        rgba(9,9,11,0.88) 100%
+      );
       pointer-events: none;
+    }
+    /* Floating caption inside carousel */
+    .rd-carousel__caption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 1.5rem;
+      z-index: 2;
+    }
+    .rd-carousel__caption-inner { max-width: 1200px; margin: 0 auto; }
+    .rd-carousel__title {
+      margin: 0 0 .5rem; color: #fff; font-size: clamp(1.4rem, 4vw, 2.2rem);
+      font-weight: 900; letter-spacing: -0.04em; line-height: 1.1;
+      text-shadow: 0 2px 24px rgba(0,0,0,.4);
+    }
+    .rd-carousel__price {
+      color: #fbbf24; font-weight: 800; font-size: 1rem;
+      text-shadow: 0 2px 10px rgba(0,0,0,.3);
+    }
+    .rd-carousel__meta {
+      color: rgba(255,255,255,.7); font-size: .82rem; font-weight: 500;
+      display: flex; align-items: center; gap: .35rem;
     }
     .rd-carousel__btn {
       position: absolute; top: 50%; transform: translateY(-50%);
-      background: rgba(0,0,0,.45); border: none; color: #fff;
-      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.18);
+      color: #fff; width: 46px; height: 46px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; cursor: pointer; transition: background .15s;
+      font-size: 1.1rem; cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: background .15s, transform .2s;
+      z-index: 3;
     }
-    .rd-carousel__btn:hover { background: rgba(0,0,0,.7); }
-    .rd-carousel__btn--prev { left: 1rem; }
-    .rd-carousel__btn--next { right: 1rem; }
+    .rd-carousel__btn:hover {
+      background: rgba(255,255,255,.28);
+      transform: translateY(-50%) scale(1.08);
+    }
+    .rd-carousel__btn--prev { left: 1.25rem; }
+    .rd-carousel__btn--next { right: 1.25rem; }
     .rd-carousel__dots {
-      position: absolute; bottom: .75rem; left: 50%; transform: translateX(-50%);
-      display: flex; gap: .4rem;
+      position: absolute; bottom: 1.5rem; right: 1.5rem;
+      display: flex; gap: .4rem; z-index: 3;
     }
     .rd-carousel__dot {
       width: 8px; height: 8px; border-radius: 50%;
-      background: rgba(255,255,255,.45); border: none; cursor: pointer;
-      transition: background .2s, transform .2s;
+      background: rgba(255,255,255,.38); border: none; cursor: pointer;
+      transition: all .25s ease;
     }
-    .rd-carousel__dot--active { background: #fff; transform: scale(1.3); }
+    .rd-carousel__dot--active { width: 22px; border-radius: 4px; background: #fff; }
 
+    /* ── Badges ───────────────────────────────────── */
+    .rd-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .25rem .7rem; border-radius: 999px;
+      font-size: .75rem; font-weight: 700; letter-spacing: .02em;
+    }
+    .rd-badge--gold {
+      background: linear-gradient(135deg, rgba(251,191,36,.22), rgba(239,68,68,.18));
+      color: #fbbf24; border: 1px solid rgba(251,191,36,.3);
+    }
+
+    /* ── Description strip ────────────────────────── */
+    .rd-desc-strip {
+      background: #fff; border-bottom: 1px solid #ebebf5; padding: .9rem 0;
+    }
+
+    /* ── Hero strip (no carousel) ─────────────────── */
+    .rd-hero-strip { padding: 2.5rem 0; }
+
+    /* ── Prize card ───────────────────────────────── */
+    .rd-prize-wrap { background: #fff; padding: 1.1rem 0; border-bottom: 1px solid #ebebf5; }
+    .rd-prize-card {
+      position: relative; overflow: hidden;
+      border-radius: 1.25rem;
+      background: linear-gradient(135deg, #09090b, #1c1240);
+      border: 1px solid rgba(251,191,36,.25);
+      padding: 1.25rem;
+    }
+    .rd-prize-card__glow {
+      position: absolute; top: -40px; right: -40px;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(251,191,36,0.25), transparent 70%);
+      pointer-events: none;
+    }
+    .rd-prize-card__inner {
+      display: flex; align-items: center; gap: 1.25rem; position: relative; z-index: 1;
+    }
+    .rd-prize-card__img {
+      width: 90px; height: 90px; object-fit: cover;
+      border-radius: 1rem; flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      border: 2px solid rgba(251,191,36,.3);
+    }
+    .rd-prize-card__icon {
+      width: 90px; height: 90px; border-radius: 1rem; flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(251,191,36,.2), rgba(239,68,68,.12));
+      border: 2px solid rgba(251,191,36,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; color: #fbbf24;
+      box-shadow: 0 0 24px rgba(251,191,36,.25);
+    }
+    .rd-prize-card__label {
+      display: flex; align-items: center; gap: .35rem;
+      color: #fbbf24; font-size: .72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em; margin-bottom: .3rem;
+    }
+    .rd-prize-card__name {
+      color: #fff; font-size: 1.2rem; font-weight: 800;
+      letter-spacing: -0.02em; line-height: 1.2; margin-bottom: .25rem;
+    }
+    .rd-prize-card__value { color: #4ade80; font-size: .88rem; font-weight: 700; margin-bottom: .25rem; }
+    .rd-prize-card__desc { color: rgba(255,255,255,.55); font-size: .82rem; }
+
+    /* ── Progress strip ───────────────────────────── */
+    .rd-progress-strip {
+      background: #fff; border-bottom: 1px solid #ebebf5; padding: 1rem 0;
+    }
+    .rd-stat {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .8rem; font-weight: 700;
+    }
+    .rd-stat--green { color: #059669; }
+    .rd-stat--amber { color: #d97706; }
+    .rd-stat--gray  { color: #71717a; }
+    .rd-progress-bar {
+      height: 10px; border-radius: 999px; overflow: hidden;
+      background: #e4e4e7; display: flex;
+    }
+    .rd-progress-bar__paid {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width .5s ease;
+    }
+    .rd-progress-bar__reserved {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      transition: width .5s ease;
+    }
+    .rd-sold-pct {
+      font-size: 1.4rem; font-weight: 900; letter-spacing: -0.04em;
+    }
+
+    /* ── Main wrap ────────────────────────────────── */
+    .rd-main-wrap { padding-top: 2rem; padding-bottom: 3rem; }
+
+    /* ── Grid card ────────────────────────────────── */
+    .rd-grid-card {
+      border-radius: 1.5rem; overflow: hidden;
+      background: #fff;
+      box-shadow: 0 4px 24px rgba(99,102,241,.08), 0 1px 4px rgba(0,0,0,.05);
+      border: 1px solid rgba(99,102,241,.07);
+    }
+    .rd-grid-card__header {
+      background: linear-gradient(135deg, #09090b 0%, #1e1b4b 55%, #3b0764 100%);
+      padding: 1rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .75rem;
+    }
+    .rd-grid-card__icon-wrap {
+      width: 38px; height: 38px; border-radius: .7rem; flex-shrink: 0;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(99,102,241,.4);
+    }
+    .rd-grid-card__title {
+      color: #fff; font-weight: 800; font-size: .95rem; letter-spacing: -0.015em;
+    }
+    .rd-grid-card__sub {
+      color: rgba(255,255,255,.5); font-size: .75rem; font-weight: 500; margin-top: 1px;
+    }
+    .rd-legend {
+      display: flex; flex-wrap: wrap; gap: .5rem .8rem;
+    }
+    .rd-legend__item {
+      display: flex; align-items: center; gap: .35rem;
+      color: rgba(255,255,255,.65); font-size: .72rem; font-weight: 600;
+    }
+    .rd-legend__dot {
+      width: 14px; height: 14px; border-radius: 4px; border: 2px solid transparent;
+    }
+    .rd-legend__dot--available { background: #fff; border-color: #c7d2fe; }
+    .rd-legend__dot--selected  { background: linear-gradient(135deg,#6366f1,#a855f7); border-color: #6366f1; }
+    .rd-legend__dot--paid      { background: linear-gradient(135deg,#d1fae5,#a7f3d0); border-color: #34d399; }
+    .rd-legend__dot--winner    { background: linear-gradient(135deg,#fbbf24,#ef4444); border-color: #d97706; }
+
+    .rd-grid-card__body { padding: 1rem; }
+
+    .rd-grid-card__footer {
+      background: #f3f4ff; border-top: 1px solid #e0e3ff; padding: .85rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .5rem;
+    }
+    .rd-grid-card__footer-label {
+      color: #6366f1; font-weight: 700; font-size: .85rem; margin-right: .35rem;
+    }
+    .rd-grid-card__footer-price {
+      font-size: 1.3rem; font-weight: 900; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    /* Number chips */
+    .rd-num-chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: .18rem .55rem; border-radius: .4rem;
+      background: linear-gradient(135deg, #eef2ff, #e0e3ff);
+      color: #4338ca; font-size: .72rem; font-weight: 800; border: 1px solid #c7d2fe;
+    }
+    .rd-num-chip--lg {
+      padding: .3rem .75rem; font-size: .85rem; border-radius: .5rem;
+    }
+
+    /* ── Reserve card ─────────────────────────────── */
+    .rd-reserve-card {
+      border-radius: 1.5rem; overflow: hidden;
+      background: #fff;
+      box-shadow: 0 8px 40px rgba(99,102,241,.12), 0 2px 8px rgba(0,0,0,.06);
+      border: 1px solid rgba(99,102,241,.1);
+      padding: 1.5rem;
+    }
+
+    /* Empty state */
+    .rd-reserve-card__empty {
+      text-align: center; padding: 2.5rem 1rem;
+    }
+    .rd-reserve-card__empty-icon {
+      width: 70px; height: 70px; border-radius: 1.2rem; margin: 0 auto 1rem;
+      background: linear-gradient(135deg, #eef2ff, #e0e3ff);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; color: #6366f1;
+      animation: float-slow 4s ease-in-out infinite;
+    }
+    .rd-reserve-card__empty-title {
+      font-weight: 800; font-size: 1.05rem; color: #18181b; margin-bottom: .4rem;
+    }
+    .rd-reserve-card__empty-sub {
+      color: #71717a; font-size: .85rem; line-height: 1.55;
+    }
+
+    /* Selection summary */
+    .rd-summary {
+      background: linear-gradient(135deg, #09090b, #1e1b4b);
+      border-radius: 1rem; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;
+    }
+    .rd-summary__label {
+      color: rgba(255,255,255,.55); font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; margin-bottom: .5rem;
+    }
+    .rd-summary__sub {
+      color: rgba(255,255,255,.5); font-size: .82rem;
+    }
+    .rd-summary__price {
+      font-size: 1.5rem; font-weight: 900; letter-spacing: -0.04em;
+    }
+
+    /* Alert */
+    .rd-alert {
+      display: flex; align-items: flex-start; gap: .5rem;
+      padding: .7rem .9rem; border-radius: .75rem;
+      font-size: .85rem; font-weight: 500;
+    }
+    .rd-alert--danger {
+      background: #fff1f2; color: #be123c; border: 1px solid rgba(244,63,94,.2);
+    }
+
+    /* Form sections */
+    .rd-form-section {
+      border-radius: 1rem; background: #fafaff;
+      border: 1px solid #e0e3ff; padding: 1rem 1.1rem; margin-bottom: 1rem;
+    }
+    .rd-form-section__title {
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .09em; color: #71717a; margin-bottom: .85rem;
+    }
+    .rd-label {
+      display: block; font-size: .82rem; font-weight: 700; color: #3f3f46; margin-bottom: .3rem;
+    }
+    .rd-label--opt { font-weight: 400; color: #a1a1aa; font-size: .78rem; }
+
+    /* Payment method cards */
+    .rd-pm-card {
+      border: 1.5px solid #e0e3ff; border-radius: .875rem;
+      padding: .75rem 1rem; margin-bottom: .6rem; cursor: pointer;
+      transition: border-color .18s, background .18s, box-shadow .18s;
+      background: #fff;
+    }
+    .rd-pm-card:hover { border-color: #a5b4fc; background: #f5f6ff; }
+    .rd-pm-card--active {
+      border-color: #6366f1; background: #f3f4ff;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+    .rd-pm-card__head {
+      display: flex; align-items: center; gap: .6rem;
+      color: #18181b; font-weight: 700; font-size: .88rem;
+    }
+    .rd-pm-card__check {
+      color: #c7d2fe; font-size: .9rem; transition: color .18s;
+    }
+    .rd-pm-card--active .rd-pm-card__check { color: #6366f1; }
+    .rd-pm-card__detail {
+      padding-left: 1.8rem; color: #71717a; font-size: .78rem; margin-top: .2rem;
+    }
+    .rd-pm-card__detail--note { color: #4338ca; font-style: italic; }
+
+    /* Mock Mercado Pago card */
+    .rd-mp-card {
+      border-radius: .875rem; padding: 1rem;
+      background: linear-gradient(135deg, #009ee3 0%, #0068b5 100%);
+      color: #fff;
+    }
+
+    /* Success state */
+    .rd-success {
+      text-align: center; padding: 2rem 1rem;
+    }
+    .rd-success__icon {
+      width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 1rem;
+      background: linear-gradient(135deg, #10b981, #059669);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: #fff;
+      box-shadow: 0 8px 30px rgba(16,185,129,.4);
+      animation: scale-in .5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .rd-success__title {
+      font-size: 1.3rem; font-weight: 900; color: #065f46; margin-bottom: .5rem;
+    }
+    .rd-success__sub { color: #6b7280; font-size: .88rem; line-height: 1.6; }
+
+    /* ── Organizer card ───────────────────────────── */
+    .rd-org-card {
+      background: #fff; border-radius: 1.25rem; padding: 1.25rem;
+      box-shadow: 0 4px 20px rgba(99,102,241,.08);
+      border: 1px solid rgba(99,102,241,.07);
+    }
+    .rd-org-card__label {
+      font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .09em; color: #a1a1aa; margin-bottom: .85rem;
+    }
+    .rd-org-card__avatar {
+      width: 52px; height: 52px; border-radius: 50%; object-fit: cover;
+      border: 2.5px solid rgba(99,102,241,.25); flex-shrink: 0;
+    }
+    .rd-org-card__avatar--initial {
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; font-weight: 800; font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .rd-wa-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: linear-gradient(135deg, #25d366, #128c7e);
+      color: #fff; text-decoration: none;
+      padding: .4rem .9rem; border-radius: 999px;
+      font-size: .8rem; font-weight: 700;
+      transition: transform .15s, box-shadow .25s;
+      box-shadow: 0 4px 14px rgba(37,211,102,.3);
+    }
+    .rd-wa-btn:hover {
+      color: #fff; transform: translateY(-2px);
+      box-shadow: 0 8px 22px rgba(37,211,102,.45);
+    }
+
+    /* ── Footer ───────────────────────────────────── */
     .rd-footer {
-      background: #1e293b; color: #94a3b8;
-      text-align: center; padding: 1rem;
-      font-size: .82rem; margin-top: 3rem;
-      display: flex; align-items: center; justify-content: center; gap: 1rem;
+      background: #09090b; border-top: 1px solid rgba(99,102,241,.12);
+      padding: 1.25rem;
     }
-    .rd-footer__link {
-      color: #a5b4fc; text-decoration: none; font-weight: 600;
+    .rd-footer__inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: center; gap: .75rem;
+      flex-wrap: wrap;
     }
-    .rd-footer__link:hover { text-decoration: underline; }
+    .rd-footer__brand {
+      display: flex; align-items: center; gap: .45rem;
+      font-weight: 800; font-size: .9rem;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .rd-footer__brand i { font-size: 1rem; }
+    .rd-footer__powered { color: rgba(255,255,255,.3); font-size: .78rem; }
+
+    /* ── Not found ────────────────────────────────── */
+    .rd-not-found {
+      min-height: 70vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center; padding: 2rem;
+    }
+    .rd-not-found__icon {
+      font-size: 4.5rem; color: #d4d4d8; margin-bottom: 1rem;
+      animation: float-slow 5s ease-in-out infinite;
+    }
+    .rd-not-found__title { font-size: 1.5rem; font-weight: 800; color: #3f3f46; margin-bottom: .5rem; }
+    .rd-not-found__sub   { color: #71717a; max-width: 360px; line-height: 1.6; }
+
+    /* ── Responsive ───────────────────────────────── */
+    @media (max-width: 576px) {
+      .rd-carousel__img { height: 280px; }
+      .rd-carousel { max-height: 280px; }
+      .rd-carousel__title { font-size: 1.2rem; }
+      .rd-legend { display: none; }
+      .rd-reserve-card { border-radius: 1.25rem; padding: 1.1rem; }
+    }
   `]
 })
 export class RaffleDetail implements OnInit, OnDestroy {
@@ -429,6 +1047,7 @@ export class RaffleDetail implements OnInit, OnDestroy {
   private readonly reservationService = inject(ReservationService);
   private readonly ws = inject(WebSocketService);
   private readonly fb = inject(FormBuilder);
+  private readonly notifications = inject(NotificationService);
 
   protected readonly loading = signal(true);
   protected readonly raffle = signal<RafflePublicResponse | null>(null);
@@ -467,7 +1086,14 @@ export class RaffleDetail implements OnInit, OnDestroy {
       fullName: ['', Validators.required],
       phone: ['', Validators.required],
       email: [''],
-    })
+    }),
+    accessCode: ['', Validators.required],
+    payment: this.fb.group({
+      method: ['MERCADO_PAGO'],
+      payerName: [''],
+      reference: [''],
+      paid: [false],
+    }),
   });
 
   private wsSubs: Subscription[] = [];
@@ -488,9 +1114,7 @@ export class RaffleDetail implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    for (const sub of this.wsSubs) {
-      sub.unsubscribe();
-    }
+    for (const sub of this.wsSubs) sub.unsubscribe();
     this.ws.disconnect();
     clearInterval(this.slideTimer);
   }
@@ -529,7 +1153,6 @@ export class RaffleDetail implements OnInit, OnDestroy {
             this.liveWinnerNumber.set(null);
             this.raffle.update(raffle => raffle ? { ...raffle, operationalStatus: 'EXECUTING' } : raffle);
           }
-
           if (evt.status === 'FAILED') {
             this.showLiveDraw.set(false);
             this.liveCountdown.set(null);
@@ -598,6 +1221,8 @@ export class RaffleDetail implements OnInit, OnDestroy {
   }
 
   protected toggleNumber(num: number): void {
+    this.reservationSuccess.set(false);
+    this.reservationError.set('');
     this.selected.update(selected =>
       selected.includes(num) ? selected.filter(n => n !== num) : [...selected, num]
     );
@@ -647,20 +1272,27 @@ export class RaffleDetail implements OnInit, OnDestroy {
     if (this.raffle()?.operationalStatus === 'EXECUTING' || this.raffle()?.operationalStatus === 'FINISHED') return;
 
     this.reserving.set(true);
+    this.reservationSuccess.set(false);
     this.reservationError.set('');
 
     const participant = this.reserveForm.get('participant')!.getRawValue() as {
       fullName: string; phone: string; email: string;
     };
+    const accessCode = (this.reserveForm.get('accessCode')?.value ?? '').trim();
 
     this.reservationService.create({
       raffleSlug: this.raffle()!.slug,
       numbers: this.selected(),
       participant: { fullName: participant.fullName, phone: participant.phone, email: participant.email || undefined },
+      accessCode,
     }).subscribe({
       next: () => {
         this.reservationSuccess.set(true);
         this.reserving.set(false);
+        this.notifications.success(
+          'Reserva creada',
+          'Tu reserva expirará en 30 minutos si no se confirma el pago.'
+        );
         this.numbers.update(numbers =>
           numbers.map(number =>
             this.selected().includes(number.number)
@@ -673,6 +1305,10 @@ export class RaffleDetail implements OnInit, OnDestroy {
       error: (e: { message: string }) => {
         this.reservationError.set(e.message ?? 'Error al crear la reserva');
         this.reserving.set(false);
+        this.notifications.error(
+          'No se pudo crear la reserva',
+          e.message ?? 'Verifica el código de acceso y los datos ingresados.'
+        );
       },
     });
   }

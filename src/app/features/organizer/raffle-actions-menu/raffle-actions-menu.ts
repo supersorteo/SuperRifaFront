@@ -4,6 +4,7 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
 
 @Component({
   selector: 'app-raffle-actions-menu',
+  imports: [],
   template: `
     <div class="action-dropdown">
       <button class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1"
@@ -17,33 +18,33 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
       @if (isOpen()) {
         <div class="action-menu" role="menu">
           <button class="action-item" role="menuitem"
-                  (click)="publish()"
+                  (click)="$event.stopPropagation(); publish()"
                   [class.action-item--disabled]="!canPublish()">
-            <i class="bi bi-send text-primary"></i>
+            <i [class]="publishIcon()" [style.color]="publishColor()"></i>
             <span>{{ raffle().publicationStatus === 'PAUSED' ? 'Reactivar' : 'Publicar' }}</span>
           </button>
           <button class="action-item" role="menuitem"
-                  (click)="pause()"
+                  (click)="$event.stopPropagation(); pause()"
                   [class.action-item--disabled]="raffle().publicationStatus !== 'PUBLISHED'">
             <i class="bi bi-pause-circle" style="color:#f59e0b"></i>
             <span>Pausar</span>
           </button>
           <button class="action-item" role="menuitem"
-                  (click)="cancel()"
+                  (click)="$event.stopPropagation(); requestCancel()"
                   [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED'">
             <i class="bi bi-slash-circle" style="color:#dc2626"></i>
             <span>Cancelar rifa</span>
           </button>
           <div class="action-divider"></div>
           <button class="action-item" role="menuitem"
-                  (click)="draw()"
+                  (click)="$event.stopPropagation(); requestDraw()"
                   [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED' || raffle().reservedCount <= 0">
             <i class="bi bi-stars" style="color:#ec4899"></i>
             <span>Ejecutar sorteo</span>
           </button>
           <div class="action-divider"></div>
           <button class="action-item" role="menuitem"
-                  (click)="remove()">
+                  (click)="$event.stopPropagation(); requestDelete()">
             <i class="bi bi-trash" style="color:#dc2626"></i>
             <span>Eliminar rifa</span>
           </button>
@@ -53,20 +54,18 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
   `
 })
 export class RaffleActionsMenu {
-  readonly raffle = input.required<RaffleListItem>();
-  readonly isOpen = input.required<boolean>();
-  readonly toggled = output<MouseEvent>();
-  readonly changed = output<RaffleListItem>();
-  readonly deleted = output<string>();
-  readonly drawRequested = output<RaffleListItem>();
-  readonly drawFailed = output<string>();
-  readonly drawExecuted = output<void>();
+  readonly raffle   = input.required<RaffleListItem>();
+  readonly isOpen   = input.required<boolean>();
+
+  readonly toggled             = output<MouseEvent>();
+  readonly changed             = output<RaffleListItem>();
+  readonly cancelRequested     = output<void>();
+  readonly deleteRequested     = output<void>();
+  readonly drawConfirmRequested = output<void>();
 
   private readonly raffleService = inject(RaffleService);
 
-  protected onToggle(e: MouseEvent): void {
-    this.toggled.emit(e);
-  }
+  protected onToggle(e: MouseEvent): void { this.toggled.emit(e); }
 
   protected publish(): void {
     if (!this.canPublish()) return;
@@ -82,45 +81,35 @@ export class RaffleActionsMenu {
     });
   }
 
-  protected cancel(): void {
-    const raffle = this.raffle();
-    if (raffle.operationalStatus === 'FINISHED' || raffle.operationalStatus === 'CANCELLED') return;
-    if (!confirm(`Cancelar la rifa "${raffle.title}"?\n\nLa rifa se cerrara definitivamente, se conservara el historial y las reservas activas quedaran canceladas.`)) return;
-
-    this.raffleService.cancel(raffle.id).subscribe({
-      next: updated => this.changed.emit(updated),
-    });
+  protected requestCancel(): void {
+    const r = this.raffle();
+    if (r.operationalStatus === 'FINISHED' || r.operationalStatus === 'CANCELLED') return;
+    this.cancelRequested.emit();
   }
 
-  protected draw(): void {
-    const raffle = this.raffle();
-    if (raffle.operationalStatus === 'FINISHED' || raffle.operationalStatus === 'CANCELLED') return;
-    if (raffle.reservedCount <= 0) {
-      this.drawFailed.emit('La rifa debe tener al menos un numero reservado antes de ejecutar el sorteo');
-      return;
-    }
-    if (!confirm(`Confirmar sorteo de "${raffle.title}"?\n\nEsta accion no se puede deshacer.`)) return;
-
-    this.drawRequested.emit(raffle);
-    this.raffleService.executeDraw(raffle.id).subscribe({
-      next: () => this.drawExecuted.emit(),
-      error: (error: Error) => this.drawFailed.emit(error.message),
-    });
+  protected requestDraw(): void {
+    const r = this.raffle();
+    if (r.operationalStatus === 'FINISHED' || r.operationalStatus === 'CANCELLED') return;
+    if (r.reservedCount <= 0) return;
+    this.drawConfirmRequested.emit();
   }
 
-  protected remove(): void {
-    const raffle = this.raffle();
-    if (!confirm(`Eliminar la rifa "${raffle.title}"?\n\nSe eliminaran todos sus numeros, reservas y la pagina publica. Esta accion no se puede deshacer.`)) return;
-
-    this.raffleService.delete(raffle.id).subscribe({
-      next: () => this.deleted.emit(raffle.id),
-    });
+  protected requestDelete(): void {
+    this.deleteRequested.emit();
   }
 
   protected canPublish(): boolean {
-    const raffle = this.raffle();
-    return (raffle.publicationStatus === 'DRAFT' || raffle.publicationStatus === 'PAUSED')
-      && raffle.operationalStatus !== 'FINISHED'
-      && raffle.operationalStatus !== 'CANCELLED';
+    const r = this.raffle();
+    return (r.publicationStatus === 'DRAFT' || r.publicationStatus === 'PAUSED')
+      && r.operationalStatus !== 'FINISHED'
+      && r.operationalStatus !== 'CANCELLED';
+  }
+
+  protected publishIcon(): string {
+    return this.raffle().publicationStatus === 'PAUSED' ? 'bi bi-play-circle-fill' : 'bi bi-send-fill';
+  }
+
+  protected publishColor(): string {
+    return this.raffle().publicationStatus === 'PAUSED' ? '#10b981' : '#4f46e5';
   }
 }
