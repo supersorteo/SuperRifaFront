@@ -18,193 +18,366 @@ type ReservationAction = 'confirm' | 'cancel' | null;
   selector: 'app-reservations-dashboard',
   imports: [CurrencyArPipe, StatusBadge, ConfirmDialog],
   template: `
-    @if (pendingAction() === 'confirm' && selectedReservation()) {
-      <app-confirm-dialog
-        [open]="true"
-        title="Confirmar reserva"
-        [body]="'Se confirmara la reserva de ' + selectedReservation()!.participantName + ' en la rifa ' + selectedReservation()!.raffleTitle + '.'"
-        icon="bi bi-check-circle-fill"
-        tone="info"
-        confirmLabel="Confirmar pago"
-        [busy]="actionLoading() === selectedReservation()!.id"
-        [items]="confirmItems()"
-        (cancelled)="closeDialog()"
-        (confirmed)="confirmSelected()" />
-    }
+    <app-confirm-dialog
+      [open]="pendingAction() === 'confirm' && selectedReservation() !== null"
+      [title]="pendingAction() === 'confirm' ? 'Confirmar reserva' : 'Cancelar reserva'"
+      [body]="dialogBody()"
+      [icon]="pendingAction() === 'confirm' ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"
+      [tone]="pendingAction() === 'confirm' ? 'info' : 'danger'"
+      [confirmLabel]="pendingAction() === 'confirm' ? 'Confirmar pago' : 'Cancelar reserva'"
+      [busy]="actionLoading() === selectedReservation()?.id"
+      [items]="pendingAction() === 'confirm' ? confirmItems() : cancelItems()"
+      (cancelled)="closeDialog()"
+      (confirmed)="pendingAction() === 'confirm' ? confirmSelected() : cancelSelected()" />
 
-    @if (pendingAction() === 'cancel' && selectedReservation()) {
-      <app-confirm-dialog
-        [open]="true"
-        title="Cancelar reserva"
-        [body]="'Se cancelara la reserva de ' + selectedReservation()!.participantName + ' y sus numeros volveran a quedar disponibles.'"
-        icon="bi bi-x-circle-fill"
-        tone="danger"
-        confirmLabel="Cancelar reserva"
-        [busy]="actionLoading() === selectedReservation()!.id"
-        [items]="cancelItems()"
-        (cancelled)="closeDialog()"
-        (confirmed)="cancelSelected()" />
-    }
-
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
-      <div>
-        <h2 class="fw-black mb-1">Reservas</h2>
-        <p class="text-muted mb-0">Gestion de reservas de tus rifas</p>
+    <!-- Header -->
+    <div class="rd-header">
+      <div class="rd-header__text">
+        <h2 class="rd-title">Reservas</h2>
+        <p class="rd-subtitle">Gestión en tiempo real</p>
       </div>
-      <div class="text-muted small">
-        <span class="badge bg-primary rounded-pill">{{ total() }}</span> reservas encontradas
+      <div class="rd-total-badge">
+        <i class="bi bi-people-fill"></i>
+        <span><strong>{{ total() }}</strong> reservas</span>
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-body py-3">
-        <div class="row g-3 align-items-end">
-          <div class="col-12 col-md-4">
-            <label class="form-label small fw-semibold text-muted mb-1">Filtrar por rifa</label>
-            <select class="form-select form-select-sm" [value]="selectedRaffleId() || ''" (change)="onRaffleChange($event)">
-              <option value="">Todas las rifas</option>
-              @for (r of raffles(); track r.id) {
-                <option [value]="r.id">{{ r.title }}</option>
-              }
-            </select>
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label small fw-semibold text-muted mb-1">Telefono</label>
-            <input class="form-control form-control-sm"
-                   type="text"
-                   placeholder="Filtrar por telefono"
-                   [value]="phoneFilter()"
-                   (change)="onPhoneChange($event)">
-          </div>
-          <div class="col-12 col-md-5">
-            <label class="form-label small fw-semibold text-muted mb-1">Estado</label>
-            <div class="d-flex flex-wrap gap-2">
-              @for (s of statusOptions; track s.value) {
-                <button
-                  class="btn btn-sm rounded-pill px-3"
-                  [class]="statusFilter() === s.value ? 'btn-primary' : 'btn-outline-secondary'"
-                  (click)="setStatus(s.value)">
-                  {{ s.label }}
-                </button>
-              }
-            </div>
+    <!-- Filters -->
+    <div class="rd-filters">
+      <div class="rd-filters__inputs">
+        <div class="rd-filter-field">
+          <label class="rd-filter-label" for="rd-raffle-sel">Rifa</label>
+          <select id="rd-raffle-sel" class="rd-select"
+                  [value]="selectedRaffleId() || ''" (change)="onRaffleChange($event)">
+            <option value="">Todas las rifas</option>
+            @for (r of raffles(); track r.id) {
+              <option [value]="r.id">{{ r.title }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="rd-filter-field">
+          <label class="rd-filter-label" for="rd-phone">Teléfono</label>
+          <div class="rd-input-wrap">
+            <i class="bi bi-telephone rd-input-icon"></i>
+            <input id="rd-phone" type="text" class="rd-input rd-input--icon"
+                   placeholder="Buscar por teléfono"
+                   [value]="phoneFilter()" (change)="onPhoneChange($event)">
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-0">
-        @if (loading()) {
-          <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem">
-              <span class="visually-hidden">Cargando...</span>
-            </div>
-          </div>
-        } @else if (reservations().length === 0) {
-          <div class="text-center py-5">
-            <i class="bi bi-inbox text-muted" style="font-size:3rem"></i>
-            <p class="text-muted mt-3 mb-0">No hay reservas con los filtros seleccionados</p>
-          </div>
-        } @else {
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th class="ps-4">Participante</th>
-                  <th class="d-none d-md-table-cell">Rifa</th>
-                  <th>Numeros</th>
-                  <th class="d-none d-sm-table-cell">Total</th>
-                  <th>Estado</th>
-                  <th class="d-none d-lg-table-cell">Fecha</th>
-                  <th class="text-end pe-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (r of reservations(); track r.id) {
-                  <tr>
-                    <td class="ps-4">
-                      <div class="fw-semibold">{{ r.participantName }}</div>
-                      <div class="small text-muted">
-                        <i class="bi bi-telephone me-1"></i>{{ r.participantPhone }}
-                      </div>
-                      @if (r.participantEmail) {
-                        <div class="small text-muted">{{ r.participantEmail }}</div>
-                      }
-                    </td>
-                    <td class="d-none d-md-table-cell">
-                      <span class="small text-muted">{{ r.raffleTitle }}</span>
-                    </td>
-                    <td>
-                      <div class="d-flex flex-wrap gap-1" style="max-width:180px">
-                        @for (n of r.numbers; track n) {
-                          <span class="badge rounded-pill" style="background:#e0e7ff;color:#3730a3;font-size:.72rem">{{ n }}</span>
-                        }
-                      </div>
-                    </td>
-                    <td class="d-none d-sm-table-cell fw-semibold text-success">
-                      {{ r.totalAmount | currencyAr }}
-                    </td>
-                    <td>
-                      <app-status-badge category="reservation" [value]="r.status"></app-status-badge>
-                    </td>
-                    <td class="d-none d-lg-table-cell small text-muted">
-                      {{ formatDate(r.createdAt) }}
-                      @if (r.status === 'PENDING' && r.expiresAt) {
-                        <div class="text-warning" style="font-size:.7rem">
-                          <i class="bi bi-clock me-1"></i>Vence {{ formatDate(r.expiresAt) }}
-                        </div>
-                      }
-                    </td>
-                    <td class="text-end pe-3">
-                      <div class="d-flex justify-content-end gap-1">
-                        @if (r.status === 'PENDING') {
-                          <button
-                            class="btn btn-sm btn-success rounded-3 px-2"
-                            [disabled]="actionLoading() === r.id"
-                            (click)="confirm(r)"
-                            title="Confirmar pago">
-                            @if (actionLoading() === r.id) {
-                              <span class="spinner-border spinner-border-sm" role="status"></span>
-                            } @else {
-                              <i class="bi bi-check-lg"></i>
-                            }
-                          </button>
-                          <button
-                            class="btn btn-sm btn-outline-danger rounded-3 px-2"
-                            [disabled]="actionLoading() === r.id"
-                            (click)="cancel(r)"
-                            title="Cancelar reserva">
-                            <i class="bi bi-x-lg"></i>
-                          </button>
-                        }
-                      </div>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-
-          @if (totalPages() > 1) {
-            <div class="d-flex justify-content-center align-items-center gap-2 py-3 border-top">
-              <button class="btn btn-sm btn-outline-secondary rounded-3"
-                      [disabled]="page() === 0"
-                      (click)="prevPage()">
-                <i class="bi bi-chevron-left"></i>
-              </button>
-              <span class="small text-muted">Pag. {{ page() + 1 }} / {{ totalPages() }}</span>
-              <button class="btn btn-sm btn-outline-secondary rounded-3"
-                      [disabled]="page() + 1 >= totalPages()"
-                      (click)="nextPage()">
-                <i class="bi bi-chevron-right"></i>
-              </button>
-            </div>
-          }
+      <div class="rd-status-pills">
+        @for (s of statusOptions; track s.value) {
+          <button class="rd-pill"
+                  [class.rd-pill--active]="statusFilter() === s.value"
+                  (click)="setStatus(s.value)">
+            {{ s.label }}
+          </button>
         }
       </div>
     </div>
-  `
+
+    <!-- Table card -->
+    <div class="rd-card">
+
+      @if (loading()) {
+        <div class="rd-state-center">
+          <div class="rd-spinner" role="status" aria-label="Cargando"></div>
+          <p class="rd-state-text">Cargando reservas...</p>
+        </div>
+      }
+
+      @else if (reservations().length === 0) {
+        <div class="rd-empty">
+          <div class="rd-empty__icon"><i class="bi bi-inbox-fill"></i></div>
+          <div class="rd-empty__title">Sin resultados</div>
+          <p class="rd-empty__sub">No hay reservas con los filtros aplicados.</p>
+        </div>
+      }
+
+      @else {
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Participante</th>
+                <th class="d-none d-md-table-cell">Rifa</th>
+                <th>Números</th>
+                <th class="d-none d-sm-table-cell">Total</th>
+                <th>Estado</th>
+                <th class="d-none d-lg-table-cell">Fecha</th>
+                <th style="width:90px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of reservations(); track r.id) {
+                <tr class="rd-row">
+                  <td class="ps-4">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="rd-avatar" [style]="avatarStyle(r.participantName)">
+                        {{ r.participantName.charAt(0).toUpperCase() }}
+                      </div>
+                      <div>
+                        <div class="rd-participant-name">{{ r.participantName }}</div>
+                        <div class="rd-participant-phone">
+                          <i class="bi bi-telephone"></i>{{ r.participantPhone }}
+                        </div>
+                        @if (r.participantEmail) {
+                          <div class="rd-participant-email">{{ r.participantEmail }}</div>
+                        }
+                      </div>
+                    </div>
+                  </td>
+
+                  <td class="d-none d-md-table-cell">
+                    <span class="rd-raffle-name">{{ r.raffleTitle }}</span>
+                  </td>
+
+                  <td>
+                    <div class="rd-numbers">
+                      @for (n of displayNums(r.numbers); track n) {
+                        <span class="rd-num-badge">{{ n }}</span>
+                      }
+                      @if (r.numbers.length > 3) {
+                        <span class="rd-num-badge rd-num-badge--more">+{{ r.numbers.length - 3 }}</span>
+                      }
+                    </div>
+                  </td>
+
+                  <td class="d-none d-sm-table-cell">
+                    <span class="rd-amount">{{ r.totalAmount | currencyAr }}</span>
+                  </td>
+
+                  <td>
+                    <app-status-badge category="reservation" [value]="r.status" />
+                  </td>
+
+                  <td class="d-none d-lg-table-cell">
+                    <span class="rd-date">{{ formatDate(r.createdAt) }}</span>
+                    @if (r.status === 'PENDING' && r.expiresAt) {
+                      <div class="rd-expires">
+                        <i class="bi bi-clock"></i>Vence {{ formatDate(r.expiresAt) }}
+                      </div>
+                    }
+                  </td>
+
+                  <td class="pe-3">
+                    @if (r.status === 'PENDING') {
+                      <div class="d-flex justify-content-end gap-1">
+                        <button class="rd-action-btn rd-action-btn--confirm"
+                                [disabled]="actionLoading() === r.id"
+                                (click)="confirm(r)"
+                                title="Confirmar pago"
+                                aria-label="Confirmar pago">
+                          @if (actionLoading() === r.id) {
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                          } @else {
+                            <i class="bi bi-check2"></i>
+                          }
+                        </button>
+                        <button class="rd-action-btn rd-action-btn--cancel"
+                                [disabled]="actionLoading() === r.id"
+                                (click)="cancel(r)"
+                                title="Cancelar reserva"
+                                aria-label="Cancelar reserva">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (totalPages() > 1) {
+          <div class="rd-pagination">
+            <button class="rd-page-btn"
+                    [disabled]="page() === 0"
+                    (click)="prevPage()"
+                    aria-label="Página anterior">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <span class="rd-page-info">{{ page() + 1 }} / {{ totalPages() }}</span>
+            <button class="rd-page-btn"
+                    [disabled]="page() + 1 >= totalPages()"
+                    (click)="nextPage()"
+                    aria-label="Página siguiente">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        }
+      }
+
+    </div>
+  `,
+  styles: [`
+    /* Header */
+    .rd-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .rd-title {
+      font-size: 1.45rem; font-weight: 900; letter-spacing: -0.035em; color: #18181b; margin: 0;
+    }
+    .rd-subtitle { font-size: .875rem; color: #71717a; margin: .25rem 0 0; }
+    .rd-total-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .45rem .9rem; border-radius: 999px;
+      background: #ede9fe; color: #6d28d9; font-size: .82rem; font-weight: 600;
+      i { font-size: .85rem; }
+    }
+
+    /* Filters */
+    .rd-filters {
+      background: #fff; border: 1px solid rgba(99,102,241,.1);
+      border-radius: 1.1rem; padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+      box-shadow: 0 2px 12px rgba(99,102,241,.06);
+      display: flex; flex-direction: column; gap: .85rem;
+    }
+    .rd-filters__inputs { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+    @media (max-width: 575px) { .rd-filters__inputs { grid-template-columns: 1fr; } }
+    .rd-filter-field { display: flex; flex-direction: column; gap: .3rem; }
+    .rd-filter-label { font-size: .78rem; font-weight: 700; color: #71717a; }
+    .rd-select, .rd-input {
+      width: 100%; padding: .55rem .85rem; font-size: .86rem;
+      background: #fafaff; color: #18181b;
+      border: 1.5px solid #e0e3ff; border-radius: .65rem; outline: none;
+      transition: border-color .18s, box-shadow .18s;
+      &:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); background: #fff; }
+    }
+    .rd-input-wrap { position: relative; }
+    .rd-input-icon {
+      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      color: #a1a1aa; font-size: .78rem; pointer-events: none;
+    }
+    .rd-input--icon { padding-left: 2rem; }
+
+    /* Status pills */
+    .rd-status-pills { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .rd-pill {
+      padding: .3rem .85rem; border-radius: 999px; font-size: .78rem; font-weight: 700;
+      border: 1.5px solid #e4e4e7; background: transparent; color: #71717a; cursor: pointer;
+      transition: all .15s;
+      &:hover { border-color: #c7d2fe; color: #4338ca; background: #eef2ff; }
+      &--active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    }
+
+    /* Table card */
+    .rd-card {
+      background: #fff; border-radius: 1.25rem;
+      border: 1px solid rgba(99,102,241,.07);
+      box-shadow: 0 4px 24px rgba(99,102,241,.08), 0 1px 4px rgba(0,0,0,.05);
+      overflow: visible;
+    }
+    .rd-card .table-responsive { overflow: visible; }
+
+    /* States */
+    .rd-state-center {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 4rem 2rem;
+    }
+    .rd-spinner {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 3px solid rgba(99,102,241,.15); border-top-color: #6366f1;
+      animation: spin-slow .8s linear infinite;
+    }
+    .rd-state-text { color: #a1a1aa; font-size: .85rem; margin: .9rem 0 0; }
+    .rd-empty {
+      padding: 4rem 2rem; text-align: center;
+    }
+    .rd-empty__icon {
+      width: 72px; height: 72px; border-radius: 1.25rem; margin: 0 auto 1rem;
+      background: linear-gradient(135deg, #eef2ff, #e0e3ff);
+      border: 1px solid rgba(99,102,241,.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.75rem; color: #6366f1;
+    }
+    .rd-empty__title { font-size: 1.05rem; font-weight: 800; color: #18181b; margin-bottom: .4rem; }
+    .rd-empty__sub   { color: #71717a; font-size: .86rem; max-width: 320px; margin: 0 auto; }
+
+    /* Table head */
+    thead tr th {
+      font-size: .75rem; font-weight: 800; color: #71717a; text-transform: uppercase;
+      letter-spacing: .07em; border-bottom: 1.5px solid #f0f0fb;
+      background: #fafaff; padding-top: .75rem; padding-bottom: .75rem;
+    }
+
+    /* Table rows */
+    .rd-row {
+      transition: background .12s;
+      &:hover { background: #fafaff !important; }
+    }
+
+    /* Participant */
+    .rd-avatar {
+      width: 38px; height: 38px; border-radius: .7rem; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: .9rem; color: #fff;
+    }
+    .rd-participant-name { font-size: .88rem; font-weight: 700; color: #18181b; }
+    .rd-participant-phone {
+      font-size: .75rem; color: #71717a; display: flex; align-items: center; gap: .25rem; margin-top: .15rem;
+      i { font-size: .68rem; }
+    }
+    .rd-participant-email { font-size: .72rem; color: #a1a1aa; margin-top: .1rem; }
+
+    /* Raffle name */
+    .rd-raffle-name { font-size: .82rem; color: #52525b; font-weight: 500; }
+
+    /* Number badges */
+    .rd-numbers { display: flex; flex-wrap: wrap; gap: .25rem; max-width: 160px; }
+    .rd-num-badge {
+      display: inline-block; padding: .15rem .45rem; border-radius: .4rem;
+      background: #e0e7ff; color: #3730a3; font-size: .7rem; font-weight: 700;
+      &--more { background: #f4f4f5; color: #71717a; }
+    }
+
+    /* Amount */
+    .rd-amount { font-size: .88rem; font-weight: 700; color: #059669; }
+
+    /* Date */
+    .rd-date { font-size: .78rem; color: #71717a; }
+    .rd-expires {
+      display: flex; align-items: center; gap: .25rem;
+      font-size: .7rem; color: #d97706; margin-top: .2rem;
+      i { font-size: .65rem; }
+    }
+
+    /* Action buttons */
+    .rd-action-btn {
+      width: 32px; height: 32px; border-radius: .5rem; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .88rem; cursor: pointer; border: none; transition: all .15s;
+      &:disabled { opacity: .45; cursor: not-allowed; }
+      &--confirm {
+        background: #dcfce7; color: #15803d;
+        &:not(:disabled):hover { background: #bbf7d0; color: #166534; }
+      }
+      &--cancel {
+        background: #fff1f2; color: #be123c;
+        &:not(:disabled):hover { background: #ffe4e6; color: #9f1239; }
+      }
+    }
+
+    /* Pagination */
+    .rd-pagination {
+      display: flex; align-items: center; justify-content: center; gap: .75rem;
+      padding: .9rem 1.25rem; border-top: 1px solid #f0f0fb; background: #fafaff;
+      border-radius: 0 0 1.25rem 1.25rem;
+    }
+    .rd-page-btn {
+      width: 34px; height: 34px; border-radius: .55rem;
+      background: #fff; border: 1.5px solid #e0e3ff; color: #6366f1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; cursor: pointer; transition: all .15s;
+      &:disabled { opacity: .35; cursor: not-allowed; }
+      &:not(:disabled):hover { background: #eef2ff; border-color: #a5b4fc; }
+    }
+    .rd-page-info { font-size: .82rem; font-weight: 700; color: #71717a; }
+  `]
 })
 export class ReservationsDashboard implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -351,6 +524,30 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  protected dialogBody(): string {
+    const r = this.selectedReservation();
+    if (!r) return '';
+    if (this.pendingAction() === 'confirm')
+      return `Se confirmará la reserva de ${r.participantName} en la rifa "${r.raffleTitle}".`;
+    return `Se cancelará la reserva de ${r.participantName} y sus números volverán a quedar disponibles.`;
+  }
+
+  protected avatarStyle(name: string): string {
+    const colors = [
+      'linear-gradient(135deg,#6366f1,#8b5cf6)',
+      'linear-gradient(135deg,#ec4899,#f43f5e)',
+      'linear-gradient(135deg,#10b981,#059669)',
+      'linear-gradient(135deg,#fbbf24,#f59e0b)',
+      'linear-gradient(135deg,#22d3ee,#0891b2)',
+      'linear-gradient(135deg,#8b5cf6,#6366f1)',
+    ];
+    return `background:${colors[name.charCodeAt(0) % colors.length]}`;
+  }
+
+  protected displayNums(numbers: number[]): number[] {
+    return numbers.slice(0, 3);
   }
 
   protected formatDate(dateTime: string): string {

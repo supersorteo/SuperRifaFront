@@ -11,165 +11,119 @@ type RaffleModalStep = 'details' | 'prize';
   imports: [ReactiveFormsModule, DecimalPipe],
   template: `
     @if (open()) {
-      <!-- Backdrop -->
       <div class="rfm-backdrop" (click)="closeCurrentStep()"></div>
 
-      <!-- Modal shell -->
       <div class="rfm-shell" role="dialog" aria-modal="true"
            [attr.aria-labelledby]="step() === 'details' ? 'rfm-title-1' : 'rfm-title-2'">
-        <div class="rfm-dialog"
-             [style.maxWidth]="step() === 'prize' ? '920px' : '820px'">
+        <div class="rfm-dialog">
 
-          <!-- ── Step progress header ────────────────────── -->
+          <!-- Header -->
           <div class="rfm-header">
             <div class="rfm-header__brand">
               <div class="rfm-header__icon">
                 <i [class]="step() === 'details' ? 'bi bi-ticket-perforated-fill' : 'bi bi-trophy-fill'"></i>
               </div>
-              <div>
-                <div class="rfm-header__step">
-                  Paso {{ step() === 'details' ? '1' : '2' }} de 2
-                </div>
-                <h4 class="rfm-header__title"
-                    [id]="step() === 'details' ? 'rfm-title-1' : 'rfm-title-2'">
-                  {{ step() === 'details' ? 'Datos de la rifa' : 'Premio e imágenes' }}
-                </h4>
-              </div>
+              <h4 class="rfm-header__title"
+                  [id]="step() === 'details' ? 'rfm-title-1' : 'rfm-title-2'">
+                {{ step() === 'details' ? 'Nueva rifa' : 'Premio e imágenes' }}
+              </h4>
             </div>
 
-            <!-- Step pills -->
             <div class="rfm-steps">
               <div class="rfm-step" [class.rfm-step--done]="step() === 'prize'" [class.rfm-step--active]="step() === 'details'">
-                <div class="rfm-step__circle">
-                  @if (step() === 'prize') { <i class="bi bi-check2"></i> } @else { 1 }
-                </div>
+                <div class="rfm-step__dot">@if (step() === 'prize') { <i class="bi bi-check2"></i> } @else { 1 }</div>
                 <span>Datos</span>
               </div>
               <div class="rfm-steps__line" [class.rfm-steps__line--done]="step() === 'prize'"></div>
               <div class="rfm-step" [class.rfm-step--active]="step() === 'prize'">
-                <div class="rfm-step__circle">2</div>
+                <div class="rfm-step__dot">2</div>
                 <span>Premio</span>
               </div>
             </div>
 
-            <button class="rfm-header__close"
+            <button class="rfm-close"
                     (click)="step() === 'prize' ? backToDetails() : resetAndClose()"
                     [attr.aria-label]="step() === 'prize' ? 'Volver' : 'Cerrar'">
               <i [class]="step() === 'prize' ? 'bi bi-arrow-left' : 'bi bi-x-lg'"></i>
             </button>
           </div>
 
-          <!-- ── Error banner ────────────────────────────── -->
           @if (error()) {
             <div class="rfm-error">
-              <i class="bi bi-exclamation-triangle-fill"></i>
-              {{ error() }}
+              <i class="bi bi-exclamation-triangle-fill"></i>{{ error() }}
             </div>
           }
 
-          <!-- ══════ STEP 1: Details ═══════════════════════ -->
+          <!-- ══ PASO 1 ══ -->
           @if (step() === 'details') {
             <form [formGroup]="detailsForm" novalidate>
               <div class="rfm-body">
-                <div class="row g-4">
 
-                  <!-- Left: title + description + info -->
-                  <div class="col-lg-7">
-                    <div class="rfm-section">
-                      <label class="rfm-label" for="rfm-title">
-                        <i class="bi bi-cursor-text"></i>Nombre de la rifa
-                      </label>
-                      <input id="rfm-title" type="text" class="rfm-input"
-                             formControlName="title" placeholder="Ej: Rifa del auto 0km"
-                             [class.rfm-input--error]="showInvalid(detailsForm, 'title')">
-                      @if (showInvalid(detailsForm, 'title')) {
-                        <div class="rfm-field-error">Este campo es obligatorio.</div>
-                      }
-                    </div>
-
-                    <div class="rfm-section">
-                      <label class="rfm-label" for="rfm-description">
-                        <i class="bi bi-text-paragraph"></i>Descripción
-                        <span class="rfm-label__opt">opcional</span>
-                      </label>
-                      <textarea id="rfm-description" class="rfm-input rfm-textarea"
-                                formControlName="description"
-                                placeholder="Describí los detalles de la rifa..."></textarea>
-                    </div>
-
-                    <div class="rfm-info-box">
-                      <div class="rfm-info-box__icon">
-                        <i class="bi bi-info-circle-fill"></i>
-                      </div>
-                      <p class="rfm-info-box__text">
-                        La rifa se crea en modo borrador. Podés publicarla cuando quieras desde las acciones del listado.
-                      </p>
-                    </div>
-                  </div>
-
-                  <!-- Right: config + summary -->
-                  <div class="col-lg-5">
-                    <div class="rfm-config-card">
-                      <div class="rfm-config-card__header">
-                        <i class="bi bi-sliders"></i>
-                        <span>Configuración</span>
-                      </div>
-
-                      <div class="rfm-section">
-                        <label class="rfm-label" for="rfm-totalNumbers">
-                          <i class="bi bi-grid-3x3-gap-fill"></i>Cantidad de números
-                        </label>
-                        <input id="rfm-totalNumbers" type="number" class="rfm-input"
-                               formControlName="totalNumbers" placeholder="100" min="2"
-                               [class.rfm-input--error]="showInvalid(detailsForm, 'totalNumbers')">
-                        @if (showInvalid(detailsForm, 'totalNumbers')) {
-                          <div class="rfm-field-error">Debe ser al menos 2.</div>
-                        }
-                      </div>
-
-                      <div class="rfm-section">
-                        <label class="rfm-label" for="rfm-price">
-                          <i class="bi bi-currency-dollar"></i>Precio por número
-                        </label>
-                        <input id="rfm-price" type="number" class="rfm-input"
-                               formControlName="pricePerNumber" placeholder="1000" min="1"
-                               [class.rfm-input--error]="showInvalid(detailsForm, 'pricePerNumber')">
-                        @if (showInvalid(detailsForm, 'pricePerNumber')) {
-                          <div class="rfm-field-error">Debe ser mayor que 0.</div>
-                        }
-                      </div>
-
-                      <div class="rfm-section">
-                        <label class="rfm-label" for="rfm-drawDateTime">
-                          <i class="bi bi-calendar-event"></i>Fecha de sorteo
-                        </label>
-                        <input id="rfm-drawDateTime" type="datetime-local" class="rfm-input"
-                               formControlName="drawDateTime" placeholder=" "
-                               [class.rfm-input--error]="showInvalid(detailsForm, 'drawDateTime')">
-                        @if (showInvalid(detailsForm, 'drawDateTime')) {
-                          <div class="rfm-field-error">Este campo es obligatorio.</div>
-                        }
-                      </div>
-
-                      <!-- Live summary -->
-                      <div class="rfm-summary">
-                        <div class="rfm-summary__row">
-                          <span>Números</span>
-                          <strong>{{ detailsForm.get('totalNumbers')?.value ?? 0 }}</strong>
-                        </div>
-                        <div class="rfm-summary__row">
-                          <span>Precio c/u</span>
-                          <strong>$ {{ detailsForm.get('pricePerNumber')?.value ?? 0 | number }}</strong>
-                        </div>
-                        <div class="rfm-summary__total">
-                          <span>Recaudación potencial</span>
-                          <strong class="rfm-summary__amount">$ {{ potentialRevenue() | number }}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
+                <div class="rfm-field">
+                  <label class="rfm-label" for="rfm-title">Nombre de la rifa</label>
+                  <input id="rfm-title" type="text" class="rfm-input"
+                         formControlName="title" placeholder="Ej: Rifa del auto 0km"
+                         [class.rfm-input--err]="showInvalid(detailsForm, 'title')">
+                  @if (showInvalid(detailsForm, 'title')) {
+                    <span class="rfm-err">Requerido</span>
+                  }
                 </div>
+
+                <div class="rfm-row3">
+                  <div class="rfm-field">
+                    <label class="rfm-label" for="rfm-num">Números</label>
+                    <input id="rfm-num" type="number" class="rfm-input"
+                           formControlName="totalNumbers" placeholder="100" min="2"
+                           [class.rfm-input--err]="showInvalid(detailsForm, 'totalNumbers')">
+                    @if (showInvalid(detailsForm, 'totalNumbers')) {
+                      <span class="rfm-err">Mín. 2</span>
+                    }
+                  </div>
+
+                  <div class="rfm-field">
+                    <label class="rfm-label" for="rfm-price">Precio por número</label>
+                    <div class="rfm-prefix-wrap">
+                      <span class="rfm-prefix">$</span>
+                      <input id="rfm-price" type="number" class="rfm-input rfm-input--prefixed"
+                             formControlName="pricePerNumber" placeholder="1000" min="1"
+                             [class.rfm-input--err]="showInvalid(detailsForm, 'pricePerNumber')">
+                    </div>
+                    @if (showInvalid(detailsForm, 'pricePerNumber')) {
+                      <span class="rfm-err">Mín. 1</span>
+                    }
+                  </div>
+
+                  <div class="rfm-field">
+                    <label class="rfm-label" for="rfm-date">Fecha del sorteo</label>
+                    <input id="rfm-date" type="datetime-local" class="rfm-input"
+                           formControlName="drawDateTime"
+                           [class.rfm-input--err]="showInvalid(detailsForm, 'drawDateTime')">
+                    @if (showInvalid(detailsForm, 'drawDateTime')) {
+                      <span class="rfm-err">Requerido</span>
+                    }
+                  </div>
+                </div>
+
+                <div class="rfm-field">
+                  <label class="rfm-label" for="rfm-desc">
+                    Descripción <span class="rfm-opt">· opcional</span>
+                  </label>
+                  <textarea id="rfm-desc" class="rfm-input rfm-textarea"
+                            formControlName="description"
+                            placeholder="Descripción de la rifa para los participantes..."></textarea>
+                </div>
+
+                <div class="rfm-revenue">
+                  <span class="rfm-revenue__meta">
+                    {{ detailsForm.get('totalNumbers')?.value ?? 0 }} números
+                    × $ {{ detailsForm.get('pricePerNumber')?.value ?? 0 | number }}
+                  </span>
+                  <div class="rfm-revenue__right">
+                    <span class="rfm-revenue__label">Recaudación potencial</span>
+                    <strong class="rfm-revenue__amount">$ {{ potentialRevenue() | number }}</strong>
+                  </div>
+                </div>
+
               </div>
             </form>
 
@@ -178,130 +132,105 @@ type RaffleModalStep = 'details' | 'prize';
                 Cancelar
               </button>
               <button type="button" class="rfm-btn rfm-btn--primary" (click)="goToPrizeStep()">
-                Continuar al premio <i class="bi bi-arrow-right ms-2"></i>
+                Continuar <i class="bi bi-arrow-right ms-2"></i>
               </button>
             </div>
           }
 
-          <!-- ══════ STEP 2: Prize & images ═══════════════ -->
+          <!-- ══ PASO 2 ══ -->
           @if (step() === 'prize') {
             <form [formGroup]="prizeForm" novalidate>
               <div class="rfm-body rfm-body--split">
 
-                <!-- Prize data -->
+                <!-- Datos del premio -->
                 <div class="rfm-prize-col">
-                  <div class="rfm-prize-col__label">
-                    <i class="bi bi-trophy-fill"></i>Premio
-                  </div>
-
-                  <div class="rfm-section">
-                    <label class="rfm-label" for="rfm-prizeName">
-                      <i class="bi bi-stars"></i>Nombre del premio
-                    </label>
+                  <div class="rfm-field">
+                    <label class="rfm-label" for="rfm-prizeName">Nombre del premio</label>
                     <input id="rfm-prizeName" type="text" class="rfm-input"
                            formControlName="prizeName" placeholder="Ej: Samsung 65 pulgadas"
-                           [class.rfm-input--error]="showInvalid(prizeForm, 'prizeName')">
+                           [class.rfm-input--err]="showInvalid(prizeForm, 'prizeName')">
                     @if (showInvalid(prizeForm, 'prizeName')) {
-                      <div class="rfm-field-error">Este campo es obligatorio.</div>
+                      <span class="rfm-err">Requerido</span>
                     }
                   </div>
 
-                  <div class="rfm-section">
-                    <label class="rfm-label" for="rfm-prizeDescription">
-                      <i class="bi bi-text-paragraph"></i>Descripción del premio
-                      <span class="rfm-label__opt">opcional</span>
+                  <div class="rfm-field">
+                    <label class="rfm-label" for="rfm-prizeDesc">
+                      Descripción <span class="rfm-opt">· opcional</span>
                     </label>
-                    <textarea id="rfm-prizeDescription" class="rfm-input rfm-textarea"
-                              style="height:100px"
+                    <textarea id="rfm-prizeDesc" class="rfm-input rfm-textarea"
                               formControlName="prizeDescription"
-                              placeholder="Describí el premio en detalle..."></textarea>
+                              placeholder="Detalles del premio..."></textarea>
                   </div>
 
-                  <div class="rfm-section">
-                    <label class="rfm-label" for="rfm-prizeValue">
-                      <i class="bi bi-tag-fill"></i>Valor estimado
-                      <span class="rfm-label__opt">opcional</span>
+                  <div class="rfm-field">
+                    <label class="rfm-label" for="rfm-prizeVal">
+                      Valor estimado <span class="rfm-opt">· opcional</span>
                     </label>
-                    <input id="rfm-prizeValue" type="number" class="rfm-input"
-                           formControlName="prizeEstimatedValue" placeholder="0" min="0">
-                  </div>
-
-                  <div class="rfm-info-box">
-                    <div class="rfm-info-box__icon"><i class="bi bi-lightbulb-fill"></i></div>
-                    <p class="rfm-info-box__text">
-                      El valor estimado es solo informativo para los participantes. No afecta el sorteo ni el cobro.
-                    </p>
+                    <div class="rfm-prefix-wrap">
+                      <span class="rfm-prefix">$</span>
+                      <input id="rfm-prizeVal" type="number" class="rfm-input rfm-input--prefixed"
+                             formControlName="prizeEstimatedValue" placeholder="0" min="0">
+                    </div>
                   </div>
                 </div>
 
-                <!-- Images -->
+                <!-- Imágenes -->
                 <div class="rfm-images-col">
-                  <div class="rfm-images-col__header">
-                    <div>
-                      <div class="rfm-prize-col__label">
-                        <i class="bi bi-images"></i>Imágenes del premio
-                      </div>
-                      <div class="rfm-images-col__hint">Al menos una imagen es obligatoria</div>
-                    </div>
-                    <div class="rfm-img-counter"
-                         [class.rfm-img-counter--empty]="previews().length === 0">
+                  <div class="rfm-images-header">
+                    <span class="rfm-label">Imágenes del premio</span>
+                    <span class="rfm-img-count" [class.rfm-img-count--empty]="previews().length === 0">
                       {{ previews().length }}/5
-                    </div>
+                    </span>
                   </div>
 
                   <input #fileInput type="file" accept="image/*" multiple class="d-none"
                          (change)="onFilesSelected($event)">
 
                   @if (previews().length === 0) {
-                    <div class="rfm-dropzone" (click)="fileInput.click()"
-                         (dragover)="$event.preventDefault()" (drop)="onDrop($event)"
-                         [class.rfm-dropzone--error]="showImageError()"
+                    <div class="rfm-dropzone"
+                         (click)="fileInput.click()"
+                         (dragover)="$event.preventDefault()"
+                         (drop)="onDrop($event)"
+                         [class.rfm-dropzone--err]="showImageError()"
                          role="button" tabindex="0" aria-label="Subir imágenes">
-                      <div class="rfm-dropzone__icon">
-                        <i class="bi bi-cloud-arrow-up-fill"></i>
-                      </div>
+                      <i class="bi bi-cloud-arrow-up-fill rfm-dropzone__icon"></i>
                       <div class="rfm-dropzone__title">Arrastrá o hacé click</div>
-                      <div class="rfm-dropzone__hint">JPG, PNG, WebP · Máx 2 MB · Hasta 5</div>
+                      <div class="rfm-dropzone__sub">JPG · PNG · WebP · máx 2 MB</div>
                     </div>
                   }
 
                   @if (previews().length > 0) {
-                    <!-- Main preview -->
-                    <div class="rfm-preview-main">
+                    <div class="rfm-preview">
                       <img [src]="previews()[activeImg()].url"
-                           class="rfm-preview-main__img"
+                           class="rfm-preview__img"
                            [alt]="'Imagen ' + (activeImg() + 1)">
                       @if (previews().length > 1) {
-                        <button type="button" class="rfm-preview-nav rfm-preview-nav--prev"
+                        <button type="button" class="rfm-nav rfm-nav--l"
                                 (click)="prevPreview()" [disabled]="activeImg() === 0"
-                                aria-label="Imagen anterior">
-                          <i class="bi bi-chevron-left"></i>
-                        </button>
-                        <button type="button" class="rfm-preview-nav rfm-preview-nav--next"
+                                aria-label="Anterior"><i class="bi bi-chevron-left"></i></button>
+                        <button type="button" class="rfm-nav rfm-nav--r"
                                 (click)="nextPreview()" [disabled]="activeImg() === previews().length - 1"
-                                aria-label="Imagen siguiente">
-                          <i class="bi bi-chevron-right"></i>
-                        </button>
+                                aria-label="Siguiente"><i class="bi bi-chevron-right"></i></button>
                       }
-                      <span class="rfm-preview-counter">{{ activeImg() + 1 }} / {{ previews().length }}</span>
+                      <span class="rfm-preview__count">{{ activeImg() + 1 }}/{{ previews().length }}</span>
                     </div>
 
-                    <!-- Thumbs -->
                     <div class="rfm-thumbs">
                       @for (p of previews(); track $index) {
-                        <div class="rfm-thumb" [class.rfm-thumb--active]="activeImg() === $index"
+                        <div class="rfm-thumb" [class.rfm-thumb--on]="activeImg() === $index"
                              (click)="activeImg.set($index)">
-                          <img [src]="p.url" class="rfm-thumb__img" [alt]="'Miniatura ' + ($index + 1)">
-                          <button type="button" class="rfm-thumb__remove"
+                          <img [src]="p.url" class="rfm-thumb__img" [alt]="'Miniatura ' + ($index+1)">
+                          <button type="button" class="rfm-thumb__rm"
                                   (click)="removeImage($index, $event)"
-                                  [attr.aria-label]="'Eliminar imagen ' + ($index + 1)">
+                                  [attr.aria-label]="'Eliminar ' + ($index+1)">
                             <i class="bi bi-x"></i>
                           </button>
                         </div>
                       }
                       @if (previews().length < 5) {
-                        <div class="rfm-thumb rfm-thumb--add" (click)="fileInput.click()"
-                             role="button" aria-label="Agregar imagen">
+                        <div class="rfm-thumb rfm-thumb--add" role="button"
+                             (click)="fileInput.click()" aria-label="Agregar imagen">
                           <i class="bi bi-plus-lg"></i>
                         </div>
                       }
@@ -309,10 +238,9 @@ type RaffleModalStep = 'details' | 'prize';
                   }
 
                   @if (showImageError()) {
-                    <div class="rfm-field-error mt-2">
-                      <i class="bi bi-exclamation-circle-fill me-1"></i>
-                      Debés subir al menos una imagen.
-                    </div>
+                    <span class="rfm-err mt-2 d-block">
+                      <i class="bi bi-exclamation-circle-fill me-1"></i>Subí al menos una imagen.
+                    </span>
                   }
                 </div>
 
@@ -326,8 +254,7 @@ type RaffleModalStep = 'details' | 'prize';
               <button type="button" class="rfm-btn rfm-btn--primary" (click)="submit()"
                       [disabled]="loading()">
                 @if (loading()) {
-                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                  Creando rifa...
+                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Creando...
                 } @else {
                   <i class="bi bi-check-circle-fill me-2"></i>Crear rifa
                 }
@@ -340,206 +267,131 @@ type RaffleModalStep = 'details' | 'prize';
     }
   `,
   styles: [`
-    /* ── Backdrop ─────────────────────────────────── */
     .rfm-backdrop {
       position: fixed; inset: 0; z-index: 1050;
-      background: rgba(9,9,11,.72);
-      backdrop-filter: blur(6px);
+      background: rgba(9,9,11,.75); backdrop-filter: blur(6px);
       animation: fadeIn .18s ease;
     }
-
-    /* ── Shell & dialog ───────────────────────────── */
     .rfm-shell {
       position: fixed; inset: 0; z-index: 1055;
-      overflow-x: hidden; overflow-y: auto;
-      display: flex; align-items: flex-start; justify-content: center;
+      overflow: auto; display: flex; align-items: flex-start; justify-content: center;
       padding: 1.5rem 1rem 3rem;
     }
     .rfm-dialog {
-      width: 100%; background: #fff;
+      width: 100%; max-width: 860px; background: #fff;
       border-radius: 1.5rem; overflow: hidden;
-      box-shadow: 0 32px 80px rgba(0,0,0,.28), 0 8px 24px rgba(99,102,241,.15);
-      animation: scale-in .22s cubic-bezier(0.34, 1.56, 0.64, 1);
-      transform-origin: top center;
+      box-shadow: 0 32px 80px rgba(0,0,0,.28), 0 8px 24px rgba(99,102,241,.14);
+      animation: scale-in .22s cubic-bezier(0.34,1.56,0.64,1); transform-origin: top center;
     }
 
-    /* ── Header ───────────────────────────────────── */
+    /* Header */
     .rfm-header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 1rem; padding: 1.1rem 1.5rem;
-      background: linear-gradient(135deg, #09090b 0%, #1e1b4b 40%, #3b0764 100%);
-      flex-wrap: wrap;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: 1rem 1.4rem;
+      background: linear-gradient(135deg,#09090b 0%,#1e1b4b 45%,#3b0764 100%);
     }
-    .rfm-header__brand {
-      display: flex; align-items: center; gap: .85rem;
-    }
+    .rfm-header__brand { display: flex; align-items: center; gap: .75rem; }
     .rfm-header__icon {
-      width: 44px; height: 44px; border-radius: .85rem; flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: .75rem; flex-shrink: 0;
       background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; color: #fbbf24;
+      font-size: 1.1rem; color: #fbbf24;
     }
-    .rfm-header__step {
-      font-size: .72rem; font-weight: 700; color: rgba(255,255,255,.55);
-      text-transform: uppercase; letter-spacing: .1em;
-    }
-    .rfm-header__title {
-      font-size: 1.1rem; font-weight: 900; color: #fff;
-      margin: 0; letter-spacing: -0.02em;
-    }
+    .rfm-header__title { font-size: 1rem; font-weight: 900; color: #fff; margin: 0; letter-spacing: -.02em; }
 
-    /* Step pills */
-    .rfm-steps {
-      display: flex; align-items: center; gap: .5rem;
-    }
+    /* Step indicator */
+    .rfm-steps { display: flex; align-items: center; gap: .45rem; }
     .rfm-step {
-      display: flex; align-items: center; gap: .4rem;
-      font-size: .75rem; font-weight: 700; color: rgba(255,255,255,.4);
-      transition: color .2s;
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .73rem; font-weight: 700; color: rgba(255,255,255,.35); transition: color .2s;
       &--active { color: #fff; }
       &--done { color: #a5f3fc; }
     }
-    .rfm-step__circle {
-      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .72rem; font-weight: 900;
-      background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.2);
-      transition: all .2s;
-      .rfm-step--active & {
-        background: #6366f1; border-color: #6366f1; color: #fff;
-      }
-      .rfm-step--done & {
-        background: #0891b2; border-color: #0891b2; color: #fff;
-      }
+    .rfm-step__dot {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 900;
+      background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.18); transition: all .2s;
+      .rfm-step--active & { background: #6366f1; border-color: #6366f1; color: #fff; }
+      .rfm-step--done   & { background: #0891b2; border-color: #0891b2; color: #fff; }
     }
     .rfm-steps__line {
-      width: 32px; height: 2px; border-radius: 1px;
-      background: rgba(255,255,255,.15);
-      transition: background .3s;
+      width: 28px; height: 2px; border-radius: 1px;
+      background: rgba(255,255,255,.15); transition: background .3s;
       &--done { background: #0891b2; }
     }
-
-    .rfm-header__close {
-      width: 36px; height: 36px; border-radius: .6rem;
+    .rfm-close {
+      width: 34px; height: 34px; border-radius: .55rem; flex-shrink: 0;
       background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.12);
-      color: rgba(255,255,255,.8); cursor: pointer; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .95rem; transition: background .15s;
+      color: rgba(255,255,255,.75); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: .9rem;
+      transition: background .15s;
       &:hover { background: rgba(255,255,255,.2); color: #fff; }
     }
 
-    /* ── Error ────────────────────────────────────── */
+    /* Error */
     .rfm-error {
       display: flex; align-items: center; gap: .5rem;
-      padding: .7rem 1.5rem; font-size: .85rem; font-weight: 600;
-      background: #fff1f2; color: #be123c;
-      border-left: 4px solid #f43f5e;
+      padding: .65rem 1.4rem; font-size: .84rem; font-weight: 600;
+      background: #fff1f2; color: #be123c; border-left: 4px solid #f43f5e;
     }
 
-    /* ── Body ─────────────────────────────────────── */
-    .rfm-body {
-      padding: 1.75rem 1.5rem;
-    }
+    /* Body */
+    .rfm-body { padding: 1.5rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; }
     .rfm-body--split {
-      display: grid; grid-template-columns: 1fr 1.1fr; gap: 1.75rem; padding: 1.5rem;
+      display: grid; grid-template-columns: 1fr 1.15fr; gap: 1.5rem; padding: 1.5rem 1.4rem;
       @media (max-width: 767px) { grid-template-columns: 1fr; }
     }
 
-    /* ── Form elements ────────────────────────────── */
-    .rfm-section { margin-bottom: 1.1rem; }
-    .rfm-label {
-      display: flex; align-items: center; gap: .35rem;
-      font-size: .8rem; font-weight: 700; color: #3f3f46; margin-bottom: .4rem;
-      i { font-size: .75rem; color: #a1a1aa; }
-    }
-    .rfm-label__opt { color: #a1a1aa; font-size: .72rem; font-weight: 400; margin-left: .25rem; }
+    /* Fields */
+    .rfm-field { display: flex; flex-direction: column; gap: .3rem; }
+    .rfm-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .85rem; }
+    .rfm-label { font-size: .8rem; font-weight: 700; color: #3f3f46; }
+    .rfm-opt   { font-weight: 400; color: #a1a1aa; font-size: .75rem; }
     .rfm-input {
-      display: block; width: 100%;
-      padding: .65rem .9rem; font-size: .9rem;
+      width: 100%; padding: .62rem .85rem; font-size: .88rem;
       background: #fafaff; color: #18181b;
-      border: 1.5px solid #e0e3ff; border-radius: .75rem;
-      outline: none; transition: border-color .18s, box-shadow .18s, background .18s;
-      &:focus {
-        background: #fff; border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99,102,241,.14);
-      }
-      &--error { border-color: #f43f5e; background: #fff1f2; }
-      &--error:focus { box-shadow: 0 0 0 3px rgba(244,63,94,.12); border-color: #f43f5e; }
+      border: 1.5px solid #e0e3ff; border-radius: .7rem; outline: none;
+      transition: border-color .18s, box-shadow .18s, background .18s;
+      &:focus { background: #fff; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.13); }
+      &--err { border-color: #f43f5e; background: #fff1f2; }
+      &--err:focus { box-shadow: 0 0 0 3px rgba(244,63,94,.11); border-color: #f43f5e; }
     }
-    .rfm-textarea { resize: vertical; height: 110px; }
-    .rfm-field-error {
-      margin-top: .3rem; font-size: .78rem; font-weight: 600; color: #be123c;
+    .rfm-prefix-wrap { position: relative; }
+    .rfm-prefix {
+      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      font-size: .88rem; font-weight: 700; color: #a1a1aa; pointer-events: none;
     }
+    .rfm-input--prefixed { padding-left: 1.75rem; }
+    .rfm-textarea { resize: vertical; height: 90px; }
+    .rfm-err { font-size: .76rem; font-weight: 600; color: #be123c; }
 
-    /* Info box */
-    .rfm-info-box {
-      display: flex; gap: .7rem; align-items: flex-start;
-      background: #fffbeb; border: 1px solid #fde68a;
-      border-radius: .85rem; padding: .8rem 1rem; margin-top: .5rem;
+    /* Revenue strip */
+    .rfm-revenue {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      background: linear-gradient(135deg,#ede9fe,#fce7f3);
+      border-radius: .85rem; padding: .75rem 1.1rem;
     }
-    .rfm-info-box__icon {
-      color: #d97706; font-size: 1rem; flex-shrink: 0; margin-top: 1px;
-    }
-    .rfm-info-box__text {
-      font-size: .8rem; color: #92400e; margin: 0; line-height: 1.55;
-    }
-
-    /* Config card (step 1 right) */
-    .rfm-config-card {
-      background: #f8faff; border: 1px solid rgba(99,102,241,.1);
-      border-radius: 1.1rem; padding: 1.1rem; height: 100%;
-    }
-    .rfm-config-card__header {
-      display: flex; align-items: center; gap: .5rem;
-      font-weight: 800; font-size: .88rem; color: #18181b;
-      margin-bottom: 1rem; padding-bottom: .75rem;
-      border-bottom: 1px solid rgba(99,102,241,.08);
-      i { color: #6366f1; }
-    }
-
-    /* Summary box */
-    .rfm-summary {
-      background: linear-gradient(135deg, #ede9fe, #fce7f3);
-      border-radius: .85rem; padding: .85rem 1rem; margin-top: .5rem;
-    }
-    .rfm-summary__row {
-      display: flex; justify-content: space-between; align-items: baseline;
-      font-size: .8rem; color: #6d28d9; margin-bottom: .3rem;
-      strong { font-weight: 700; }
-    }
-    .rfm-summary__total {
-      display: flex; justify-content: space-between; align-items: baseline;
-      padding-top: .5rem; margin-top: .35rem; border-top: 1px solid rgba(139,92,246,.2);
-      font-size: .8rem; font-weight: 700; color: #4c1d95;
-    }
-    .rfm-summary__amount {
-      font-size: 1rem; font-weight: 900;
+    .rfm-revenue__meta { font-size: .78rem; color: #7c3aed; font-weight: 500; }
+    .rfm-revenue__right { text-align: right; }
+    .rfm-revenue__label { display: block; font-size: .7rem; color: #6d28d9; font-weight: 600; }
+    .rfm-revenue__amount {
+      font-size: 1.05rem; font-weight: 900;
       background: linear-gradient(135deg,#6366f1,#8b5cf6);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
 
-    /* ── Prize step ───────────────────────────────── */
-    .rfm-prize-col__label {
-      display: flex; align-items: center; gap: .4rem;
-      font-size: .78rem; font-weight: 800; color: #a1a1aa;
-      text-transform: uppercase; letter-spacing: .08em;
-      margin-bottom: .85rem;
-      i { color: #6366f1; }
-    }
+    /* Prize col */
     .rfm-prize-col {
-      border-right: 1px solid #f0f0fb;
-      padding-right: 1.75rem;
-      @media (max-width: 767px) { border-right: none; padding-right: 0; border-bottom: 1px solid #f0f0fb; padding-bottom: 1.5rem; }
+      display: flex; flex-direction: column; gap: 1rem;
+      border-right: 1px solid #f0f0fb; padding-right: 1.5rem;
+      @media (max-width: 767px) { border-right: none; padding-right: 0; border-bottom: 1px solid #f0f0fb; padding-bottom: 1.25rem; }
     }
 
-    /* Images column */
-    .rfm-images-col { }
-    .rfm-images-col__header {
-      display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: .85rem;
-    }
-    .rfm-images-col__hint { font-size: .75rem; color: #a1a1aa; margin-top: .2rem; }
-    .rfm-img-counter {
-      padding: .2rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 800;
+    /* Images col */
+    .rfm-images-col { display: flex; flex-direction: column; gap: .75rem; }
+    .rfm-images-header { display: flex; align-items: center; justify-content: space-between; }
+    .rfm-img-count {
+      padding: .18rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 800;
       background: #ede9fe; color: #6d28d9;
       &--empty { background: #fff1f2; color: #be123c; }
     }
@@ -547,91 +399,79 @@ type RaffleModalStep = 'details' | 'prize';
     /* Drop zone */
     .rfm-dropzone {
       border: 2px dashed #c7d2fe; border-radius: 1rem;
-      background: linear-gradient(135deg, #f5f3ff, #fdf2f8);
-      padding: 2.5rem 1rem; text-align: center; cursor: pointer;
+      background: linear-gradient(135deg,#f5f3ff,#fdf2f8);
+      padding: 2rem 1rem; text-align: center; cursor: pointer;
       transition: border-color .18s, background .18s;
       &:hover { border-color: #6366f1; background: #eff0fe; }
-      &--error { border-color: #f43f5e; background: #fff1f2; }
+      &--err { border-color: #f43f5e; background: #fff1f2; }
     }
     .rfm-dropzone__icon {
-      width: 60px; height: 60px; border-radius: 50%; margin: 0 auto .9rem;
-      background: linear-gradient(135deg, #dbeafe, #fce7f3);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem; color: #6366f1;
+      font-size: 2rem; color: #a5b4fc; display: block; margin-bottom: .6rem;
     }
-    .rfm-dropzone__title { font-size: .9rem; font-weight: 700; color: #3f3f46; margin-bottom: .3rem; }
-    .rfm-dropzone__hint { font-size: .78rem; color: #a1a1aa; }
+    .rfm-dropzone__title { font-size: .88rem; font-weight: 700; color: #3f3f46; margin-bottom: .25rem; }
+    .rfm-dropzone__sub   { font-size: .74rem; color: #a1a1aa; }
 
     /* Preview */
-    .rfm-preview-main {
-      position: relative; height: 240px; border-radius: 1rem; overflow: hidden;
-      background: #09090b; margin-bottom: .75rem;
+    .rfm-preview {
+      position: relative; height: 220px; border-radius: .9rem; overflow: hidden; background: #09090b;
     }
-    .rfm-preview-main__img {
-      width: 100%; height: 100%; object-fit: contain; display: block;
-    }
-    .rfm-preview-nav {
+    .rfm-preview__img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .rfm-nav {
       position: absolute; top: 50%; transform: translateY(-50%);
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 30px; height: 30px; border-radius: 50%;
       background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15);
-      color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: .8rem; transition: background .15s;
+      color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .78rem;
+      transition: background .15s;
       &:disabled { opacity: .3; cursor: not-allowed; }
       &:not(:disabled):hover { background: rgba(0,0,0,.8); }
-      &--prev { left: .6rem; }
-      &--next { right: .6rem; }
+      &--l { left: .5rem; }
+      &--r { right: .5rem; }
     }
-    .rfm-preview-counter {
-      position: absolute; bottom: .6rem; right: .75rem;
-      background: rgba(0,0,0,.65); color: #fff; font-size: .72rem; font-weight: 700;
-      padding: .2rem .5rem; border-radius: 999px;
+    .rfm-preview__count {
+      position: absolute; bottom: .5rem; right: .65rem;
+      background: rgba(0,0,0,.6); color: #fff; font-size: .7rem; font-weight: 700;
+      padding: .18rem .45rem; border-radius: 999px;
     }
 
     /* Thumbs */
-    .rfm-thumbs {
-      display: flex; gap: .5rem; flex-wrap: wrap;
-    }
+    .rfm-thumbs { display: flex; gap: .45rem; flex-wrap: wrap; }
     .rfm-thumb {
-      position: relative; width: 58px; height: 58px; border-radius: .6rem;
+      position: relative; width: 54px; height: 54px; border-radius: .55rem;
       overflow: hidden; cursor: pointer; flex-shrink: 0;
       border: 2.5px solid #e4e4e7; transition: border-color .15s;
-      &--active { border-color: #6366f1; }
+      &--on  { border-color: #6366f1; }
       &--add {
-        border: 2px dashed #c7d2fe; background: #f5f3ff;
+        border: 2px dashed #c7d2fe; background: #f5f3ff; overflow: visible;
         display: flex; align-items: center; justify-content: center;
-        color: #a5b4fc; font-size: 1.2rem; overflow: visible;
+        color: #a5b4fc; font-size: 1.1rem;
         &:hover { border-color: #6366f1; color: #6366f1; }
       }
     }
     .rfm-thumb__img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .rfm-thumb__remove {
+    .rfm-thumb__rm {
       position: absolute; top: -5px; right: -5px;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #ef4444; color: #fff; border: none;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .7rem; cursor: pointer; padding: 0;
-      transition: background .15s;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #ef4444; color: #fff; border: none; padding: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: .65rem;
       &:hover { background: #b91c1c; }
     }
 
-    /* ── Footer ───────────────────────────────────── */
+    /* Footer */
     .rfm-footer {
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      padding: .9rem 1.5rem; border-top: 1px solid #f0f0fb; background: #fafaff;
+      padding: .85rem 1.4rem; border-top: 1px solid #f0f0fb; background: #fafaff;
     }
     .rfm-btn {
-      display: inline-flex; align-items: center; font-weight: 700; font-size: .9rem;
-      padding: .65rem 1.5rem; border-radius: .75rem; cursor: pointer;
-      border: none; transition: all .18s;
+      display: inline-flex; align-items: center; font-weight: 700; font-size: .88rem;
+      padding: .6rem 1.35rem; border-radius: .7rem; cursor: pointer; border: none; transition: all .18s;
       &--ghost {
-        background: transparent; color: #71717a;
-        border: 1.5px solid #e4e4e7;
-        &:hover { background: #f4f4f5; color: #3f3f46; border-color: #d4d4d8; }
+        background: transparent; color: #71717a; border: 1.5px solid #e4e4e7;
+        &:hover { background: #f4f4f5; color: #3f3f46; }
       }
       &--primary {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.35);
-        &:hover { box-shadow: 0 6px 20px rgba(99,102,241,.45); transform: translateY(-1px); }
+        background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff;
+        box-shadow: 0 4px 14px rgba(99,102,241,.32);
+        &:hover { box-shadow: 0 6px 20px rgba(99,102,241,.44); transform: translateY(-1px); }
         &:disabled { opacity: .65; cursor: not-allowed; transform: none; }
       }
     }
