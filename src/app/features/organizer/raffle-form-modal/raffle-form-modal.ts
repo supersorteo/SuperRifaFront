@@ -123,14 +123,21 @@ function minFutureDateTimeValidator(minMinutesAhead: number): ValidatorFn {
                     }
                   </div>
                 </div>
-
                 <div class="rfm-field">
                   <label class="rfm-label" for="rfm-desc">
                     Descripción <span class="rfm-opt">· opcional</span>
                   </label>
-                  <textarea id="rfm-desc" class="rfm-input rfm-textarea"
+                  <div class="rfm-textarea-wrap">
+                    <textarea id="rfm-desc" class="rfm-input rfm-textarea"
                             formControlName="description"
+                            maxlength="1500"
+                            [class.rfm-input--err]="showInvalid(detailsForm, 'description')"
                             placeholder="Descripción de la rifa para los participantes..."></textarea>
+                    <span class="rfm-textarea-counter">{{ descriptionLength() }}/1500</span>
+                  </div>
+                  @if (showInvalid(detailsForm, 'description') && detailsForm.get('description')?.hasError('maxlength')) {
+                    <span class="rfm-err">La descripcion admite hasta 1500 caracteres.</span>
+                  }
                 </div>
 
                 <div class="rfm-revenue">
@@ -441,7 +448,23 @@ function minFutureDateTimeValidator(minMinutesAhead: number): ValidatorFn {
       opacity: .85;
       filter: saturate(1.1);
     }
-    .rfm-textarea { resize: vertical; height: 90px; }
+    .rfm-textarea-wrap { position: relative; }
+    .rfm-textarea { resize: vertical; height: 90px; padding-bottom: 2rem; }
+    .rfm-textarea-counter {
+      position: absolute;
+      right: .7rem;
+      bottom: .65rem;
+      z-index: 2;
+      padding: .16rem .42rem;
+      border-radius: .45rem;
+      background: rgba(255,255,255,.96);
+      color: #71717a;
+      font-size: .68rem;
+      font-weight: 700;
+      line-height: 1;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
     .rfm-err { font-size: .76rem; font-weight: 600; color: #be123c; }
 
     /* Revenue strip */
@@ -742,7 +765,7 @@ export class RaffleFormModal implements OnDestroy {
 
   protected readonly detailsForm = this.fb.group({
     title:          ['', Validators.required],
-    description:    [''],
+    description:    ['', Validators.maxLength(1500)],
     totalNumbers:   [100, [Validators.required, Validators.min(2)]],
     pricePerNumber: [1000, [Validators.required, Validators.min(1)]],
     drawDateTime:   ['', [Validators.required, minFutureDateTimeValidator(30)]],
@@ -774,6 +797,10 @@ export class RaffleFormModal implements OnDestroy {
   protected potentialRevenue(): number {
     return ((this.detailsForm.get('totalNumbers')?.value ?? 0) as number) *
            ((this.detailsForm.get('pricePerNumber')?.value ?? 0) as number);
+  }
+
+  protected descriptionLength(): number {
+    return (this.detailsForm.get('description')?.value || '').length;
   }
 
   protected goToPrizeStep(): void {
@@ -893,3 +920,5 @@ export class RaffleFormModal implements OnDestroy {
 
   ngOnDestroy(): void { this.revokeAll(); }
 }
+
+
