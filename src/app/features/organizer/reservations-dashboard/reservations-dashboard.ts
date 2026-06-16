@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { RaffleService } from '../../../core/services/raffle.service';
@@ -81,6 +81,16 @@ type ReservationAction = 'confirm' | 'cancel' | null;
     <!-- Table card -->
     <div class="rd-card">
 
+      @if (expiringSoonCount() > 0 && !loading()) {
+        <div class="rd-expiry-banner">
+          <i class="bi bi-exclamation-triangle-fill rd-expiry-banner__icon"></i>
+          <div>
+            <strong>{{ expiringSoonCount() }} reserva{{ expiringSoonCount() > 1 ? 's' : '' }} por vencer</strong>
+            — Confirmá el pago antes de que se liberen los números automáticamente.
+          </div>
+        </div>
+      }
+
       @if (loading()) {
         <div class="rd-state-center">
           <div class="rd-spinner" role="status" aria-label="Cargando"></div>
@@ -112,7 +122,7 @@ type ReservationAction = 'confirm' | 'cancel' | null;
             </thead>
             <tbody>
               @for (r of reservations(); track r.id) {
-                <tr class="rd-row">
+                <tr class="rd-row" [class.rd-row--expiring]="isExpiringSoon(r)">
                   <td class="ps-4">
                     <div class="d-flex align-items-center gap-3">
                       <div class="rd-avatar" [style]="avatarStyle(r.participantName)">
@@ -156,9 +166,15 @@ type ReservationAction = 'confirm' | 'cancel' | null;
                   <td class="d-none d-lg-table-cell">
                     <span class="rd-date">{{ formatDate(r.createdAt) }}</span>
                     @if (r.status === 'PENDING' && r.expiresAt) {
-                      <div class="rd-expires">
-                        <i class="bi bi-clock"></i>Vence {{ formatDate(r.expiresAt) }}
-                      </div>
+                      @if (isExpiringSoon(r)) {
+                        <div class="rd-expires rd-expires--urgent">
+                          <i class="bi bi-exclamation-triangle-fill"></i>{{ expiryLabel(r.expiresAt) }}
+                        </div>
+                      } @else {
+                        <div class="rd-expires">
+                          <i class="bi bi-clock"></i>Vence {{ formatDate(r.expiresAt) }}
+                        </div>
+                      }
                     }
                   </td>
 
@@ -305,10 +321,21 @@ type ReservationAction = 'confirm' | 'cancel' | null;
       background: #fafaff; padding-top: .75rem; padding-bottom: .75rem;
     }
 
+    /* Expiry banner */
+    .rd-expiry-banner {
+      display: flex; align-items: flex-start; gap: .65rem;
+      padding: .8rem 1.25rem; margin: 0;
+      background: #fffbeb; border-bottom: 1px solid #fde68a;
+      font-size: .83rem; color: #92400e; line-height: 1.5;
+    }
+    .rd-expiry-banner__icon { color: #d97706; font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
     /* Table rows */
     .rd-row {
       transition: background .12s;
       &:hover { background: #fafaff !important; }
+      &--expiring { background: #fffbeb !important; }
+      &--expiring:hover { background: #fef3c7 !important; }
     }
 
     /* Participant */
@@ -344,6 +371,10 @@ type ReservationAction = 'confirm' | 'cancel' | null;
       display: flex; align-items: center; gap: .25rem;
       font-size: .7rem; color: #d97706; margin-top: .2rem;
       i { font-size: .65rem; }
+      &--urgent {
+        color: #dc2626; font-weight: 700;
+        i { font-size: .68rem; }
+      }
     }
 
     /* Action buttons */
@@ -400,6 +431,10 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
   protected readonly pendingAction = signal<ReservationAction>(null);
   protected readonly selectedReservation = signal<OrganizerReservation | null>(null);
   protected readonly selectedRaffleId = signal<string | undefined>(undefined);
+
+  protected readonly expiringSoonCount = computed(() =>
+    this.reservations().filter(r => this.isExpiringSoon(r)).length
+  );
 
   protected readonly statusOptions: { value: StatusFilter; label: string }[] = [
     { value: 'ALL', label: 'Todas' },
@@ -548,6 +583,20 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
 
   protected displayNums(numbers: number[]): number[] {
     return numbers.slice(0, 3);
+  }
+
+  protected isExpiringSoon(r: OrganizerReservation): boolean {
+    if (r.status !== 'PENDING' || !r.expiresAt) return false;
+    return (new Date(r.expiresAt).getTime() - Date.now()) < 2 * 60 * 60 * 1000;
+  }
+
+  protected expiryLabel(expiresAt: string): string {
+    const ms = new Date(expiresAt).getTime() - Date.now();
+    if (ms <= 0) return 'Venció';
+    const min = Math.floor(ms / 60000);
+    if (min < 60) return `Vence en ${min} min`;
+    const h = Math.floor(min / 60);
+    return `Vence en ${h}h ${min % 60}min`;
   }
 
   protected formatDate(dateTime: string): string {
