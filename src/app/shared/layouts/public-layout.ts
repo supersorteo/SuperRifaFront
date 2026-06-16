@@ -17,15 +17,13 @@ import { AuthService } from '../../core/services/auth.service';
           <span class="text-white">SuperRifa</span>
         </a>
 
-        <!-- Mobile toggle -->
         <button class="btn btn-link text-white d-lg-none p-2 ms-auto"
                 (click)="navOpen.update(v => !v)"
                 [attr.aria-expanded]="navOpen()"
-                aria-label="Menú">
+                aria-label="Menu">
           <i [class]="navOpen() ? 'bi bi-x-lg fs-5' : 'bi bi-list fs-4'"></i>
         </button>
 
-        <!-- Desktop links -->
         <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
           @if (auth.isLoggedIn()) {
             <span class="text-white-50 small me-1">
@@ -35,7 +33,7 @@ import { AuthService } from '../../core/services/auth.service';
               <i class="bi bi-speedometer2 me-1"></i>Dashboard
             </a>
           } @else {
-            <a class="btn btn-sm btn-outline-light px-3" routerLink="/auth/login">Iniciar sesión</a>
+            <a class="btn btn-sm btn-outline-light px-3" routerLink="/auth/login">Iniciar sesion</a>
             <a class="btn btn-sm fw-semibold px-3" routerLink="/auth/register"
                style="background:#f59e0b;color:#0f172a;border:none">
               <i class="bi bi-rocket-takeoff me-1"></i>Crear cuenta
@@ -44,7 +42,6 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- Mobile nav dropdown -->
       @if (navOpen()) {
         <div class="container-xl pb-3 d-lg-none animate-fade-up">
           <div class="border-top border-white border-opacity-25 pt-3 d-flex flex-column gap-2">
@@ -58,7 +55,7 @@ import { AuthService } from '../../core/services/auth.service';
               </a>
             } @else {
               <a class="btn btn-outline-light btn-sm w-100" routerLink="/auth/login"
-                 (click)="navOpen.set(false)">Iniciar sesión</a>
+                 (click)="navOpen.set(false)">Iniciar sesion</a>
               <a class="btn btn-sm fw-semibold w-100" routerLink="/auth/register"
                  (click)="navOpen.set(false)"
                  style="background:#f59e0b;color:#0f172a;border:none">
@@ -88,13 +85,13 @@ import { AuthService } from '../../core/services/auth.service';
             <h6 class="text-white-50 text-uppercase small fw-semibold mb-3" style="letter-spacing:.08em">Plataforma</h6>
             <ul class="list-unstyled mb-0">
               <li class="mb-1"><a routerLink="/auth/register" class="text-white-50 text-decoration-none small hover-text-white">Crear cuenta</a></li>
-              <li class="mb-1"><a routerLink="/auth/login" class="text-white-50 text-decoration-none small">Iniciar sesión</a></li>
+              <li class="mb-1"><a routerLink="/auth/login" class="text-white-50 text-decoration-none small">Iniciar sesion</a></li>
             </ul>
           </div>
           <div class="col-md-4">
             <h6 class="text-white-50 text-uppercase small fw-semibold mb-3" style="letter-spacing:.08em">Contacto</h6>
             <p class="text-white-50 small mb-0">
-              <i class="bi bi-shield-check me-1 text-success"></i>Pagos seguros vía Mercado Pago<br>
+              <i class="bi bi-shield-check me-1 text-success"></i>Pagos seguros via Mercado Pago<br>
               <i class="bi bi-lightning-charge me-1 text-warning"></i>Actualizaciones en tiempo real
             </p>
           </div>
@@ -107,7 +104,10 @@ import { AuthService } from '../../core/services/auth.service';
       </div>
     </footer>
   `,
-  styles: [`:host { display: flex; flex-direction: column; min-height: 100vh; } main { flex: 1; }`]
+  styles: [`
+    :host { display: flex; flex-direction: column; min-height: 100vh; }
+    main { flex: 1; }
+  `]
 })
 export class PublicLayout {
   protected readonly auth = inject(AuthService);

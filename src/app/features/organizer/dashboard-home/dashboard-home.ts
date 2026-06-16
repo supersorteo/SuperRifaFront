@@ -158,8 +158,8 @@ type DialogType = 'cancel' | 'delete' | 'draw';
 
       <!-- Table -->
       @else {
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+        <div class="table-responsive dh-table-wrap">
+          <table class="table table-hover align-middle mb-0 dh-table">
             <thead>
               <tr>
                 <th class="ps-4">Rifa</th>
@@ -199,10 +199,17 @@ type DialogType = 'cancel' | 'delete' | 'draw';
                         @if (r.reservationAccessCode && r.publicationStatus !== 'DRAFT') {
                           <button type="button"
                                   class="dh-code-chip mt-1"
+                                  [class.dh-code-chip--disabled]="r.operationalStatus === 'FINISHED'"
+                                  [disabled]="r.operationalStatus === 'FINISHED'"
                                   (click)="copyAccessCode($event, r)">
-                            <i class="bi" [class]="copiedCode() === r.id ? 'bi-check2-circle text-success' : 'bi-copy'"></i>
+                            <i class="bi"
+                               [class]="r.operationalStatus === 'FINISHED'
+                                 ? 'bi-lock-fill'
+                                 : copiedCode() === r.id ? 'bi-check2-circle text-success' : 'bi-copy'"></i>
                             <code>{{ r.reservationAccessCode }}</code>
-                            @if (copiedCode() === r.id) {
+                            @if (r.operationalStatus === 'FINISHED') {
+                              <span>Inhabilitado</span>
+                            } @else if (copiedCode() === r.id) {
                               <span class="text-success">¡Copiado!</span>
                             }
                           </button>
@@ -297,7 +304,26 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       box-shadow: 0 4px 24px rgba(99,102,241,.08), 0 1px 4px rgba(0,0,0,.05);
       border: 1px solid rgba(99,102,241,.07);
     }
-    .dh-card .table-responsive { overflow: visible; }
+    .dh-card .table-responsive.dh-table-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99,102,241,.35) transparent;
+    }
+    .dh-card .table-responsive.dh-table-wrap::-webkit-scrollbar {
+      height: 10px;
+    }
+    .dh-card .table-responsive.dh-table-wrap::-webkit-scrollbar-thumb {
+      background: rgba(99,102,241,.28);
+      border-radius: 999px;
+    }
+    .dh-card .table-responsive.dh-table-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .dh-table {
+      min-width: 720px;
+    }
     .dh-card__header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 1.1rem 1.25rem; border-bottom: 1px solid #f0f0fb;
@@ -365,6 +391,11 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       transition: background .12s;
       &:hover { background: #fafaff !important; }
     }
+    .dh-table th,
+    .dh-table td {
+      white-space: nowrap;
+      vertical-align: middle;
+    }
 
     /* Raffle color avatar */
     .dh-raffle-avatar {
@@ -398,6 +429,14 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       code { font-size: .72rem; color: inherit; }
       &:hover { background: rgba(99,102,241,.12); }
     }
+    .dh-code-chip--disabled {
+      cursor: not-allowed;
+      background: rgba(148,163,184,.12);
+      color: #64748b;
+      border-color: rgba(148,163,184,.2);
+      opacity: .85;
+      &:hover { background: rgba(148,163,184,.12); }
+    }
 
     /* Table cells */
     .dh-cell-value {
@@ -425,6 +464,14 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       background: #f4f4f5; border: 1px solid #e4e4e7;
       font-size: .82rem; transition: all .15s;
       &:hover { background: #eef2ff; color: #6366f1; border-color: #c7d2fe; }
+    }
+    @media (max-width: 767.98px) {
+      .dh-card__header {
+        padding-bottom: .85rem;
+      }
+      .dh-table {
+        min-width: 680px;
+      }
     }
   `]
 })
@@ -620,6 +667,7 @@ export class DashboardHome implements OnInit, OnDestroy {
 
   protected copyAccessCode(event: MouseEvent, raffle: RaffleListItem): void {
     event.stopPropagation();
+    if (raffle.operationalStatus === 'FINISHED') return;
     const code = raffle.reservationAccessCode;
     if (!code) return;
     navigator.clipboard.writeText(code).then(() => {

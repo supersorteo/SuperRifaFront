@@ -12,10 +12,6 @@ export const routes: Routes = [
         path: '',
         loadComponent: () => import('./features/public/home/home').then(m => m.Home),
       },
-      {
-        path: 'mis-numeros',
-        loadComponent: () => import('./features/public/my-numbers/my-numbers').then(m => m.MyNumbers),
-      },
     ],
   },
 
@@ -23,6 +19,10 @@ export const routes: Routes = [
   {
     path: 'rifa/:slug',
     loadComponent: () => import('./features/public/raffle-detail/raffle-detail').then(m => m.RaffleDetail),
+  },
+  {
+    path: 'mis-numeros',
+    loadComponent: () => import('./features/public/my-numbers/my-numbers').then(m => m.MyNumbers),
   },
 
   // ── AUTH ─────────────────────────────────────────────────────────────────

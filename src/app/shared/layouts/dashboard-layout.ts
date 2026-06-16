@@ -1,11 +1,22 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-dashboard-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmDialog],
   template: `
+    <app-confirm-dialog
+      [open]="logoutDialogOpen()"
+      title="Cerrar sesion"
+      body="Se cerrara tu sesion del panel del organizador en este dispositivo."
+      icon="bi bi-box-arrow-right"
+      tone="info"
+      confirmLabel="Cerrar sesion"
+      (cancelled)="closeLogoutDialog()"
+      (confirmed)="confirmLogout()" />
+
     <div class="d-flex" style="min-height:100vh">
       @if (sidebarOpen()) {
         <div class="sidebar-overlay" (click)="sidebarOpen.set(false)" aria-hidden="true"></div>
@@ -67,7 +78,7 @@ import { AuthService } from '../../core/services/auth.service';
               <div class="text-white-50 small text-truncate" style="font-size:0.72rem">{{ auth.orgUser()?.email }}</div>
             </div>
           </div>
-          <button class="nav-link w-100 border-0 text-start" (click)="logout()" style="background:none">
+          <button class="nav-link w-100 border-0 text-start" (click)="requestLogout()" style="background:none">
             <i class="bi bi-box-arrow-right"></i>Cerrar sesión
           </button>
         </div>
@@ -100,6 +111,7 @@ export class DashboardLayout {
   protected readonly auth = inject(AuthService);
 
   protected readonly sidebarOpen = signal(false);
+  protected readonly logoutDialogOpen = signal(false);
   protected readonly initial = computed(() =>
     (this.auth.orgUser()?.fullName ?? '?').charAt(0).toUpperCase()
   );
@@ -108,7 +120,17 @@ export class DashboardLayout {
     return parts.length > 0 ? parts[0] : '';
   });
 
-  logout(): void {
+  protected requestLogout(): void {
+    this.sidebarOpen.set(false);
+    this.logoutDialogOpen.set(true);
+  }
+
+  protected closeLogoutDialog(): void {
+    this.logoutDialogOpen.set(false);
+  }
+
+  protected confirmLogout(): void {
+    this.logoutDialogOpen.set(false);
     this.auth.logout();
   }
 }

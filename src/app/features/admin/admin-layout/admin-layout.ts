@@ -2,14 +2,24 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Location } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-admin-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmDialog],
   template: `
+    <app-confirm-dialog
+      [open]="logoutDialogOpen()"
+      title="Cerrar sesion"
+      body="Se cerrara tu sesion del panel de administracion en este dispositivo."
+      icon="bi bi-box-arrow-right"
+      tone="info"
+      confirmLabel="Cerrar sesion"
+      (cancelled)="closeLogoutDialog()"
+      (confirmed)="confirmLogout()" />
+
     <div class="admin-shell">
 
-      <!-- Sidebar desktop -->
       <aside class="admin-sidebar d-none d-lg-flex flex-column">
         <div class="admin-sidebar__brand">
           <div class="admin-sidebar__brand-icon">
@@ -22,7 +32,7 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
 
         <nav class="admin-sidebar__nav flex-grow-1">
-          <a routerLink="/admin" routerLinkActive="is-active" [routerLinkActiveOptions]="{exact:true}"
+          <a routerLink="/admin" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }"
              class="admin-nav-item">
             <i class="bi bi-grid-fill"></i><span>Inicio</span>
           </a>
@@ -45,16 +55,15 @@ import { AuthService } from '../../../core/services/auth.service';
               <div class="admin-sidebar__user-role">Administrador</div>
             </div>
           </div>
-          <button class="admin-sidebar__logout" (click)="logout()" aria-label="Cerrar sesión">
+          <button class="admin-sidebar__logout" (click)="requestLogout()" aria-label="Cerrar sesion">
             <i class="bi bi-box-arrow-right"></i>
           </button>
         </div>
       </aside>
 
-      <!-- Mobile top bar -->
       <header class="admin-topbar d-flex d-lg-none align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-sm btn-dark border-0 px-2" (click)="mobileOpen.set(!mobileOpen())" aria-label="Menú">
+          <button class="btn btn-sm btn-dark border-0 px-2" (click)="mobileOpen.set(!mobileOpen())" aria-label="Menu">
             <i [class]="mobileOpen() ? 'bi bi-x-lg' : 'bi bi-list fs-5'"></i>
           </button>
           <span class="fw-bold text-white small">Admin</span>
@@ -63,18 +72,17 @@ import { AuthService } from '../../../core/services/auth.service';
           <button class="btn btn-sm btn-dark border-0 px-2" (click)="goBack()" aria-label="Salir del panel" title="Salir del panel">
             <i class="bi bi-arrow-left-circle text-info"></i>
           </button>
-          <button class="btn btn-sm btn-dark border-0 px-2" (click)="logout()" aria-label="Cerrar sesión">
+          <button class="btn btn-sm btn-dark border-0 px-2" (click)="requestLogout()" aria-label="Cerrar sesion">
             <i class="bi bi-box-arrow-right text-danger"></i>
           </button>
         </div>
       </header>
 
-      <!-- Mobile sidebar overlay -->
       @if (mobileOpen()) {
         <div class="admin-mobile-overlay" (click)="mobileOpen.set(false)"></div>
         <aside class="admin-sidebar admin-sidebar--mobile d-flex flex-column">
           <nav class="admin-sidebar__nav flex-grow-1 pt-3">
-            <a routerLink="/admin" routerLinkActive="is-active" [routerLinkActiveOptions]="{exact:true}"
+            <a routerLink="/admin" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }"
                class="admin-nav-item" (click)="mobileOpen.set(false)">
               <i class="bi bi-grid-fill"></i><span>Inicio</span>
             </a>
@@ -90,7 +98,6 @@ import { AuthService } from '../../../core/services/auth.service';
         </aside>
       }
 
-      <!-- Main content -->
       <main class="admin-main">
         <router-outlet />
       </main>
@@ -190,10 +197,11 @@ import { AuthService } from '../../../core/services/auth.service';
   `]
 })
 export class AdminLayout {
-  private readonly auth     = inject(AuthService);
+  private readonly auth = inject(AuthService);
   private readonly location = inject(Location);
 
   protected readonly mobileOpen = signal(false);
+  protected readonly logoutDialogOpen = signal(false);
 
   protected readonly firstName = computed(() => {
     const parts = this.auth.adminUser()?.fullName?.split(' ') ?? [];
@@ -204,7 +212,17 @@ export class AdminLayout {
     this.firstName().charAt(0).toUpperCase()
   );
 
-  protected logout(): void {
+  protected requestLogout(): void {
+    this.mobileOpen.set(false);
+    this.logoutDialogOpen.set(true);
+  }
+
+  protected closeLogoutDialog(): void {
+    this.logoutDialogOpen.set(false);
+  }
+
+  protected confirmLogout(): void {
+    this.logoutDialogOpen.set(false);
     this.auth.adminLogout();
   }
 
