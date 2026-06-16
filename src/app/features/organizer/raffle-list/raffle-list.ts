@@ -63,7 +63,7 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       <button class="btn btn-gradient fw-bold px-4 py-2 rounded-3 d-inline-flex align-items-center gap-2"
               (click)="showModal.set(true)"
               aria-label="Crear nueva rifa">
-        <i class="bi bi-plus-circle-fill"></i>Nueva Rifa
+        <i class="bi bi-plus-circle-fill"></i><span>Nueva Rifa</span>
       </button>
     </div>
 
@@ -113,20 +113,22 @@ type DialogType = 'cancel' | 'delete' | 'draw';
         </p>
         <button class="btn btn-gradient fw-bold px-5 py-3 rounded-3 d-inline-flex align-items-center gap-2"
                 (click)="showModal.set(true)">
-          <i class="bi bi-plus-circle-fill"></i>Crear mi primera rifa
+          <i class="bi bi-plus-circle-fill"></i><span>Crear mi primera rifa</span>
         </button>
       </div>
     }
 
     <!-- ── Grid ──────────────────────────────────────────────────────────── -->
     @if (!loading() && raffles().length > 0) {
-      <div class="row g-4">
+      <div class="rl-grid">
         @for (r of raffles(); track r.id) {
-          <div class="col-md-6 col-xl-4">
-            <div class="rl-card">
-
+          <div class="rl-grid__item">
+            <div class="rl-card" [class.rl-card--finished]="r.operationalStatus === 'FINISHED'">
               <!-- Image / placeholder -->
               <div class="rl-card__media">
+                @if (r.operationalStatus === 'FINISHED') {
+                  <div class="rl-card__finished-ribbon">Terminada</div>
+                }
                 @if (r.images.length > 0) {
                   <img [src]="currentImage(r).url"
                        [alt]="currentImage(r).altText || r.title"
@@ -187,13 +189,14 @@ type DialogType = 'cancel' | 'delete' | 'draw';
 
                 <!-- Access code -->
                 @if (r.reservationAccessCode && r.publicationStatus !== 'DRAFT') {
-                  <div class="rl-code">
+                  <div class="rl-code" [class.rl-code--disabled]="r.operationalStatus === 'FINISHED'">
                     <span class="rl-code__label">Código</span>
                     <code class="rl-code__value">{{ r.reservationAccessCode }}</code>
                     <button type="button" class="rl-code__copy"
+                            [disabled]="r.operationalStatus === 'FINISHED'"
                             (click)="copyAccessCode($event, r)">
                       <i class="bi" [class]="copiedCode() === r.id ? 'bi-check2-circle' : 'bi-copy'"></i>
-                      {{ copiedCode() === r.id ? 'Copiado' : 'Copiar' }}
+                      {{ r.operationalStatus === 'FINISHED' ? 'Inhabilitado' : (copiedCode() === r.id ? 'Copiado' : 'Copiar') }}
                     </button>
                   </div>
                 }
@@ -305,7 +308,18 @@ type DialogType = 'cancel' | 'delete' | 'draw';
     }
 
     /* ── Card ──────────────────────────────────── */
+    .rl-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(296px, 340px));
+      justify-content: center;
+      gap: 1.35rem;
+    }
+    .rl-grid__item {
+      width: 100%;
+    }
+
     .rl-card {
+      position: relative;
       background: #fff;
       border-radius: 1.25rem;
       border: 1px solid rgba(99,102,241,.08);
@@ -322,18 +336,62 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       }
     }
 
+    .rl-card--finished {
+      opacity: .82;
+      border-color: rgba(15,23,42,.18);
+      box-shadow: 0 10px 28px rgba(15,23,42,.12);
+    }
+    .rl-card--finished::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 1.25rem;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(15,23,42,.1));
+      pointer-events: none;
+      z-index: 1;
+    }
+    .rl-card__finished-ribbon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 4;
+      width: 280px;
+      padding: .52rem 1rem;
+      text-align: center;
+      background: linear-gradient(135deg, #0f172a, #334155);
+      color: #fff;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      transform: translate(-50%, -50%) rotate(-33deg);
+      box-shadow: 0 10px 24px rgba(15,23,42,.24);
+    }
+
     /* Media section */
     .rl-card__media {
-      position: relative; height: 180px;
+      position: relative;
+      height: 228px;
       border-radius: 1.25rem 1.25rem 0 0;
       overflow: hidden; /* solo clipea la imagen, no el dropdown */
       flex-shrink: 0;
+      background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    }
+    .rl-card__media,
+    .rl-card__body,
+    .rl-card__footer {
+      position: relative;
+      z-index: 2;
     }
     .rl-card__img {
-      width: 100%; height: 100%; object-fit: cover;
-      display: block; transition: transform .4s ease;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      transition: transform .28s ease, filter .28s ease;
     }
-    .rl-card:hover .rl-card__img { transform: scale(1.04); }
+    .rl-card:hover .rl-card__img { transform: scale(1.03); filter: saturate(1.04); }
     .rl-card__placeholder {
       width: 100%; height: 100%;
       display: flex; align-items: center; justify-content: center;
@@ -420,6 +478,19 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       transition: color .15s;
       &:hover { color: #4338ca; }
     }
+    .rl-code--disabled {
+      background: #f4f4f5;
+      border-color: rgba(161,161,170,.18);
+    }
+    .rl-code--disabled .rl-code__label,
+    .rl-code--disabled .rl-code__value {
+      color: #a1a1aa;
+    }
+    .rl-code__copy:disabled {
+      color: #a1a1aa;
+      cursor: not-allowed;
+      opacity: .85;
+    }
 
     /* Winner chip */
     .rl-winner-chip {
@@ -453,6 +524,19 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       background: #f4f4f5; border: 1px solid #e4e4e7;
       font-size: .78rem; transition: all .15s;
       &:hover { background: #eef2ff; color: #6366f1; border-color: #c7d2fe; }
+    }
+
+    @media (max-width: 991.98px) {
+      .rl-card__media { height: 216px; }
+    }
+
+    @media (max-width: 575.98px) {
+      .rl-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+      }
+
+      .rl-card__media { height: 200px; }
     }
   `]
 })
@@ -660,6 +744,7 @@ export class RaffleList implements OnInit, OnDestroy {
 
   protected copyAccessCode(event: MouseEvent, r: RaffleListItem): void {
     event.stopPropagation();
+    if (r.operationalStatus === 'FINISHED') return;
     const code = r.reservationAccessCode;
     if (!code) return;
     navigator.clipboard.writeText(code).then(() => {

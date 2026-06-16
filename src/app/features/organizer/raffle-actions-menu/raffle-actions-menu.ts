@@ -17,32 +17,34 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
 
       @if (isOpen()) {
         <div class="action-menu" role="menu">
-          <button class="action-item" role="menuitem"
-                  (click)="$event.stopPropagation(); publish()"
-                  [class.action-item--disabled]="!canPublish()">
-            <i [class]="publishIcon()" [style.color]="publishColor()"></i>
-            <span>{{ raffle().publicationStatus === 'PAUSED' ? 'Reactivar' : 'Publicar' }}</span>
-          </button>
-          <button class="action-item" role="menuitem"
-                  (click)="$event.stopPropagation(); pause()"
-                  [class.action-item--disabled]="raffle().publicationStatus !== 'PUBLISHED'">
-            <i class="bi bi-pause-circle" style="color:#f59e0b"></i>
-            <span>Pausar</span>
-          </button>
-          <button class="action-item" role="menuitem"
-                  (click)="$event.stopPropagation(); requestCancel()"
-                  [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED'">
-            <i class="bi bi-slash-circle" style="color:#dc2626"></i>
-            <span>Cancelar rifa</span>
-          </button>
-          <div class="action-divider"></div>
-          <button class="action-item" role="menuitem"
-                  (click)="$event.stopPropagation(); requestDraw()"
-                  [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED' || raffle().reservedCount <= 0">
-            <i class="bi bi-stars" style="color:#ec4899"></i>
-            <span>Ejecutar sorteo</span>
-          </button>
-          <div class="action-divider"></div>
+          @if (raffle().operationalStatus !== 'FINISHED') {
+            <button class="action-item" role="menuitem"
+                    (click)="$event.stopPropagation(); publish()"
+                    [class.action-item--disabled]="!canPublish()">
+              <i [class]="publishIcon()" [style.color]="publishColor()"></i>
+              <span>{{ raffle().publicationStatus === 'PAUSED' ? 'Reactivar' : 'Publicar' }}</span>
+            </button>
+            <button class="action-item" role="menuitem"
+                    (click)="$event.stopPropagation(); pause()"
+                    [class.action-item--disabled]="raffle().publicationStatus !== 'PUBLISHED'">
+              <i class="bi bi-pause-circle" style="color:#f59e0b"></i>
+              <span>Pausar</span>
+            </button>
+            <button class="action-item" role="menuitem"
+                    (click)="$event.stopPropagation(); requestCancel()"
+                    [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED'">
+              <i class="bi bi-slash-circle" style="color:#dc2626"></i>
+              <span>Cancelar rifa</span>
+            </button>
+            <div class="action-divider"></div>
+            <button class="action-item" role="menuitem"
+                    (click)="$event.stopPropagation(); requestDraw()"
+                    [class.action-item--disabled]="raffle().operationalStatus === 'FINISHED' || raffle().operationalStatus === 'CANCELLED' || raffle().reservedCount <= 0">
+              <i class="bi bi-stars" style="color:#ec4899"></i>
+              <span>Ejecutar sorteo</span>
+            </button>
+            <div class="action-divider"></div>
+          }
           <button class="action-item" role="menuitem"
                   (click)="$event.stopPropagation(); requestDelete()">
             <i class="bi bi-trash" style="color:#dc2626"></i>

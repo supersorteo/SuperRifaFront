@@ -215,6 +215,11 @@ h1, h2, h3, h4, h5, h6 {
   position: relative; overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.3s ease, filter 0.2s ease;
 
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+
   &::before {
     content: '';
     position: absolute; inset: 0;
@@ -222,6 +227,7 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0;
     transition: opacity 0.2s ease;
     border-radius: inherit;
+    z-index: 0;
   }
   // shimmer sweep
   &::after {
@@ -231,6 +237,7 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
     transform: skewX(-20deg);
     transition: left 0.5s ease;
+    z-index: 0;
   }
 
   &:hover, &:focus {

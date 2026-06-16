@@ -1,8 +1,22 @@
 import { Component, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { RaffleService } from '../../../core/services/raffle.service';
+
+function minFutureDateTimeValidator(minMinutesAhead: number): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const rawValue = control.value;
+    if (!rawValue) return null;
+
+    const target = new Date(rawValue);
+    if (Number.isNaN(target.getTime())) return { invalidDateTime: true };
+
+    return target.getTime() >= Date.now() + minMinutesAhead * 60_000
+      ? null
+      : { minFutureDateTime: { minMinutesAhead } };
+  };
+}
 
 @Component({
   selector: 'app-raffle-form',
@@ -107,7 +121,10 @@ import { RaffleService } from '../../../core/services/raffle.service';
               <div class="mb-3">
                 <label class="form-label fw-medium" for="drawDateTime">Fecha y hora del sorteo</label>
                 <input id="drawDateTime" type="datetime-local" class="form-control"
-                       formControlName="drawDateTime">
+                       formControlName="drawDateTime"
+                       [attr.min]="minDrawDateTime()"
+                       [class.is-invalid]="t('drawDateTime') && form.get('drawDateTime')?.invalid">
+                <div class="invalid-feedback">{{ drawDateTimeError() }}</div>
               </div>
               <div class="mb-3">
                 <label class="form-label fw-medium" for="drawMethod">Método de sorteo</label>
@@ -173,7 +190,7 @@ export class RaffleForm {
     description:        [''],
     totalNumbers:       [100, [Validators.required, Validators.min(2)]],
     pricePerNumber:     [1000, [Validators.required, Validators.min(1)]],
-    drawDateTime:       [''],
+    drawDateTime:       ['', minFutureDateTimeValidator(30)],
     drawMethod:         ['MANUAL'],
     drawPolicy:         ['PAID_ONLY'],
     prizeName:          ['', Validators.required],
@@ -183,6 +200,18 @@ export class RaffleForm {
 
   protected t(field: string): boolean {
     return !!this.form.get(field)?.touched;
+  }
+
+  protected drawDateTimeError(): string {
+    const control = this.form.get('drawDateTime');
+    if (!control?.touched || !control.errors) return '';
+    if (control.hasError('invalidDateTime')) return 'Fecha invalida';
+    if (control.hasError('minFutureDateTime')) return 'Debe ser al menos 30 minutos posterior a la hora actual';
+    return 'Fecha invalida';
+  }
+
+  protected minDrawDateTime(): string {
+    return this.toLocalDateTimeValue(new Date(Date.now() + 30 * 60_000));
   }
 
   protected potentialRevenue(): number {
@@ -216,5 +245,14 @@ export class RaffleForm {
         this.loading.set(false);
       },
     });
+  }
+
+  private toLocalDateTimeValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const hours = `${date.getHours()}`.padStart(2, '0');
+    const minutes = `${date.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 }

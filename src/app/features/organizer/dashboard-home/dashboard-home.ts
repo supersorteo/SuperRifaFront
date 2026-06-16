@@ -63,7 +63,7 @@ type DialogType = 'cancel' | 'delete' | 'draw';
       <button class="btn btn-gradient fw-bold px-4 py-2 rounded-3 d-inline-flex align-items-center gap-2"
               (click)="showModal.set(true)"
               aria-label="Crear nueva rifa">
-        <i class="bi bi-plus-circle-fill"></i>Nueva Rifa
+        <i class="bi bi-plus-circle-fill"></i><span>Nueva Rifa</span>
       </button>
     </div>
 
@@ -212,7 +212,10 @@ type DialogType = 'cancel' | 'delete' | 'draw';
                   </td>
 
                   <td>
-                    <app-status-badge category="publication" [value]="r.publicationStatus" variant="solid" />
+                    <app-status-badge
+                      [category]="r.operationalStatus === 'FINISHED' ? 'operational' : 'publication'"
+                      [value]="r.operationalStatus === 'FINISHED' ? r.operationalStatus : r.publicationStatus"
+                      variant="solid" />
                   </td>
 
                   <td class="d-none d-md-table-cell">

@@ -1,10 +1,24 @@
 import { Component, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { RaffleService } from '../../../core/services/raffle.service';
 
 interface ImgPreview { file: File; url: string; }
 type RaffleModalStep = 'details' | 'prize';
+
+function minFutureDateTimeValidator(minMinutesAhead: number): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const rawValue = control.value;
+    if (!rawValue) return null;
+
+    const target = new Date(rawValue);
+    if (Number.isNaN(target.getTime())) return { invalidDateTime: true };
+
+    return target.getTime() >= Date.now() + minMinutesAhead * 60_000
+      ? null
+      : { minFutureDateTime: { minMinutesAhead } };
+  };
+}
 
 @Component({
   selector: 'app-raffle-form-modal',
@@ -95,11 +109,17 @@ type RaffleModalStep = 'details' | 'prize';
 
                   <div class="rfm-field">
                     <label class="rfm-label" for="rfm-date">Fecha del sorteo</label>
-                    <input id="rfm-date" type="datetime-local" class="rfm-input"
-                           formControlName="drawDateTime"
-                           [class.rfm-input--err]="showInvalid(detailsForm, 'drawDateTime')">
+                    <div class="rfm-date-wrap" [class.rfm-date-wrap--err]="showInvalid(detailsForm, 'drawDateTime')">
+                      <div class="rfm-date-wrap__icon">
+                        <i class="bi bi-calendar-event"></i>
+                      </div>
+                      <input id="rfm-date" type="datetime-local" class="rfm-input rfm-input--date"
+                             formControlName="drawDateTime"
+                             [attr.min]="minDrawDateTime()"
+                             [class.rfm-input--err]="showInvalid(detailsForm, 'drawDateTime')">
+                    </div>
                     @if (showInvalid(detailsForm, 'drawDateTime')) {
-                      <span class="rfm-err">Requerido</span>
+                      <span class="rfm-err">{{ drawDateTimeError() }}</span>
                     }
                   </div>
                 </div>
@@ -274,14 +294,20 @@ type RaffleModalStep = 'details' | 'prize';
     }
     .rfm-shell {
       position: fixed; inset: 0; z-index: 1055;
-      overflow: auto; display: flex; align-items: flex-start; justify-content: center;
-      padding: 1.5rem 1rem 3rem;
+      overflow-y: auto; overflow-x: hidden;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem 1rem;
     }
     .rfm-dialog {
-      width: 100%; max-width: 860px; background: #fff;
-      border-radius: 1.5rem; overflow: hidden;
+      width: min(100%, 860px); max-width: 860px; background: #fff;
+      border-radius: 1.5rem;
+      overflow-y: auto; overflow-x: hidden;
+      max-height: calc(100dvh - 3rem);
+      display: flex; flex-direction: column;
+      overscroll-behavior: contain;
       box-shadow: 0 32px 80px rgba(0,0,0,.28), 0 8px 24px rgba(99,102,241,.14);
-      animation: scale-in .22s cubic-bezier(0.34,1.56,0.64,1); transform-origin: top center;
+      animation: scale-in .22s cubic-bezier(0.34,1.56,0.64,1); transform-origin: center center;
+      margin: auto 0;
     }
 
     /* Header */
@@ -336,7 +362,12 @@ type RaffleModalStep = 'details' | 'prize';
     }
 
     /* Body */
-    .rfm-body { padding: 1.5rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; }
+    .rfm-body {
+      padding: 1.5rem 1.4rem; display: flex; flex-direction: column; gap: 1rem;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: visible;
+    }
     .rfm-body--split {
       display: grid; grid-template-columns: 1fr 1.15fr; gap: 1.5rem; padding: 1.5rem 1.4rem;
       @media (max-width: 767px) { grid-template-columns: 1fr; }
@@ -361,7 +392,55 @@ type RaffleModalStep = 'details' | 'prize';
       position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
       font-size: .88rem; font-weight: 700; color: #a1a1aa; pointer-events: none;
     }
+    .rfm-date-wrap {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .18rem .72rem;
+      border: 1.5px solid #e0e3ff;
+      border-radius: .8rem;
+      background: linear-gradient(135deg, #fafaff, #f5f7ff);
+      transition: border-color .18s, box-shadow .18s, background .18s;
+    }
+    .rfm-date-wrap:focus-within {
+      background: #fff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.13);
+    }
+    .rfm-date-wrap--err {
+      border-color: #f43f5e;
+      background: #fff1f2;
+    }
+    .rfm-date-wrap--err:focus-within {
+      border-color: #f43f5e;
+      box-shadow: 0 0 0 3px rgba(244,63,94,.11);
+    }
+    .rfm-date-wrap__icon {
+      width: 34px; height: 34px; border-radius: .75rem; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; font-size: .92rem;
+      box-shadow: 0 10px 20px rgba(99,102,241,.22);
+    }
     .rfm-input--prefixed { padding-left: 1.75rem; }
+    .rfm-input--date {
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      padding-left: 0;
+      padding-right: 0;
+      font-weight: 700;
+      color: #312e81;
+      min-height: 42px;
+    }
+    .rfm-input--date:focus {
+      border: none;
+      box-shadow: none;
+      background: transparent;
+    }
+    .rfm-input--date::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: .85;
+      filter: saturate(1.1);
+    }
     .rfm-textarea { resize: vertical; height: 90px; }
     .rfm-err { font-size: .76rem; font-weight: 600; color: #be123c; }
 
@@ -460,6 +539,7 @@ type RaffleModalStep = 'details' | 'prize';
     .rfm-footer {
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
       padding: .85rem 1.4rem; border-top: 1px solid #f0f0fb; background: #fafaff;
+      flex-shrink: 0;
     }
     .rfm-btn {
       display: inline-flex; align-items: center; font-weight: 700; font-size: .88rem;
@@ -473,6 +553,174 @@ type RaffleModalStep = 'details' | 'prize';
         box-shadow: 0 4px 14px rgba(99,102,241,.32);
         &:hover { box-shadow: 0 6px 20px rgba(99,102,241,.44); transform: translateY(-1px); }
         &:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+      }
+    }
+
+    @media (max-width: 991.98px) {
+      .rfm-dialog {
+        width: min(100%, 760px);
+      }
+
+      .rfm-header {
+        padding: .95rem 1rem;
+      }
+
+      .rfm-body,
+      .rfm-body--split,
+      .rfm-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+
+      .rfm-row3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .rfm-shell {
+        align-items: center;
+        padding: 1rem .75rem;
+      }
+
+      .rfm-dialog {
+        width: 100%;
+        max-width: min(100%, 680px);
+        max-height: calc(100dvh - 2rem);
+        margin: auto 0;
+        border-radius: 1.15rem;
+      }
+
+      .rfm-header {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: .85rem;
+      }
+
+      .rfm-header__brand {
+        min-width: 0;
+      }
+
+      .rfm-header__title {
+        font-size: .95rem;
+      }
+
+      .rfm-steps {
+        width: 100%;
+        order: 3;
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: .1rem;
+      }
+
+      .rfm-close {
+        margin-left: auto;
+      }
+
+      .rfm-body,
+      .rfm-body--split {
+        padding: 1rem;
+      }
+
+      .rfm-body--split {
+        gap: 1rem;
+      }
+    }
+
+    @media (max-width: 575.98px) {
+      .rfm-shell {
+        padding: .65rem;
+      }
+
+      .rfm-dialog {
+        max-height: calc(100dvh - 1.3rem);
+        border-radius: 1rem;
+      }
+
+      .rfm-header {
+        padding: .85rem;
+      }
+
+      .rfm-header__icon {
+        width: 36px;
+        height: 36px;
+        border-radius: .65rem;
+        font-size: 1rem;
+      }
+
+      .rfm-steps {
+        gap: .35rem;
+      }
+
+      .rfm-step {
+        font-size: .67rem;
+      }
+
+      .rfm-step__dot {
+        width: 20px;
+        height: 20px;
+        font-size: .65rem;
+      }
+
+      .rfm-steps__line {
+        width: 20px;
+      }
+
+      .rfm-error {
+        padding: .6rem .85rem;
+        font-size: .78rem;
+      }
+
+      .rfm-body,
+      .rfm-body--split {
+        padding: .85rem;
+      }
+
+      .rfm-date-wrap {
+        gap: .55rem;
+        padding: .16rem .58rem;
+      }
+
+      .rfm-date-wrap__icon {
+        width: 30px;
+        height: 30px;
+        border-radius: .65rem;
+        font-size: .82rem;
+      }
+
+      .rfm-revenue {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: .85rem;
+      }
+
+      .rfm-revenue__right {
+        width: 100%;
+        text-align: left;
+      }
+
+      .rfm-preview {
+        height: 190px;
+      }
+
+      .rfm-thumbs {
+        gap: .4rem;
+      }
+
+      .rfm-thumb {
+        width: 50px;
+        height: 50px;
+      }
+
+      .rfm-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        padding: .85rem;
+      }
+
+      .rfm-btn {
+        width: 100%;
+        justify-content: center;
       }
     }
   `]
@@ -497,7 +745,7 @@ export class RaffleFormModal implements OnDestroy {
     description:    [''],
     totalNumbers:   [100, [Validators.required, Validators.min(2)]],
     pricePerNumber: [1000, [Validators.required, Validators.min(1)]],
-    drawDateTime:   ['', Validators.required],
+    drawDateTime:   ['', [Validators.required, minFutureDateTimeValidator(30)]],
   });
 
   protected readonly prizeForm = this.fb.group({
@@ -508,6 +756,19 @@ export class RaffleFormModal implements OnDestroy {
 
   protected showInvalid(form: ReturnType<FormBuilder['group']>, field: string): boolean {
     return !!form.get(field)?.touched && !!form.get(field)?.invalid;
+  }
+
+  protected drawDateTimeError(): string {
+    const control = this.detailsForm.get('drawDateTime');
+    if (!control?.touched || !control.errors) return '';
+    if (control.hasError('required')) return 'Requerido';
+    if (control.hasError('invalidDateTime')) return 'Fecha invalida';
+    if (control.hasError('minFutureDateTime')) return 'Debe ser al menos 30 minutos posterior a la hora actual';
+    return 'Fecha invalida';
+  }
+
+  protected minDrawDateTime(): string {
+    return this.toLocalDateTimeValue(new Date(Date.now() + 30 * 60_000));
   }
 
   protected potentialRevenue(): number {
@@ -619,6 +880,15 @@ export class RaffleFormModal implements OnDestroy {
     this.previews().forEach(p => URL.revokeObjectURL(p.url));
     this.previews.set([]);
     this.activeImg.set(0);
+  }
+
+  private toLocalDateTimeValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const hours = `${date.getHours()}`.padStart(2, '0');
+    const minutes = `${date.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   ngOnDestroy(): void { this.revokeAll(); }
