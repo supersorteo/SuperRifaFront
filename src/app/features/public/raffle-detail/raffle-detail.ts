@@ -293,13 +293,19 @@ import { NotificationService } from '../../../core/services/notification.service
 
               @if (reservationSuccess()) {
                 <div class="rd-success">
-                  <div class="rd-success__icon">
-                    <i class="bi bi-check-circle-fill"></i>
-                  </div>
-                  <div class="rd-success__title">¡Reserva creada!</div>
-                  <p class="rd-success__sub">
-                    Tu reserva vence en 30 minutos. Completá el pago para confirmarla.
-                  </p>
+                  @if (selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
+                    <div class="rd-success__icon" style="background:linear-gradient(135deg,#009ee3,#0068b5)">
+                      <i class="bi bi-credit-card-2-front-fill"></i>
+                    </div>
+                    <div class="rd-success__title">Redirigiendo a Mercado Pago</div>
+                    <p class="rd-success__sub">Tu reserva fue creada. En un momento serás redirigido para completar el pago.</p>
+                  } @else {
+                    <div class="rd-success__icon">
+                      <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div class="rd-success__title">¡Reserva creada!</div>
+                    <p class="rd-success__sub">Tu reserva vence en 30 minutos. Completá el pago para confirmarla.</p>
+                  }
                   <div class="rd-success__amount">{{ reservedAmount() | currencyAr }}</div>
 
                   @if (selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
@@ -313,10 +319,10 @@ import { NotificationService } from '../../../core/services/notification.service
                             [disabled]="mpLoading()">
                       @if (mpLoading()) {
                         <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                        Preparando pago...
+                        Redirigiendo...
                       } @else {
                         <i class="bi bi-credit-card-2-front-fill"></i>
-                        Pagar con Mercado Pago
+                        Intentar de nuevo
                       }
                     </button>
                     <p class="rd-success__hint">Serás redirigido a Mercado Pago para completar el pago de forma segura</p>
@@ -472,14 +478,19 @@ import { NotificationService } from '../../../core/services/notification.service
 
                   <!-- Submit -->
                   <button type="submit"
-                          class="btn btn-gradient w-100 py-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2"
+                          class="btn w-100 py-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2"
+                          [class]="selectedPaymentMethod()?.type === 'MERCADO_PAGO' ? 'rd-mp-pay-btn' : 'btn-gradient'"
                           style="font-size:1rem"
                           [disabled]="reserving() || raffle()!.operationalStatus === 'EXECUTING' || raffle()!.operationalStatus === 'FINISHED'">
                     @if (reserving()) {
                       <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                      Reservando...
+                      Procesando...
+                    } @else if (selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
+                      <i class="bi bi-credit-card-2-front-fill"></i>
+                      Pagar con Mercado Pago — {{ selected().length }} nro{{ selected().length !== 1 ? 's' : '' }}
                     } @else {
-                      <i class="bi bi-lock-fill"></i>Reservar {{ selected().length }} número{{ selected().length !== 1 ? 's' : '' }}
+                      <i class="bi bi-lock-fill"></i>
+                      Reservar {{ selected().length }} número{{ selected().length !== 1 ? 's' : '' }}
                     }
                   </button>
                 </form>
@@ -1297,9 +1308,9 @@ export class RaffleDetail implements OnInit, OnDestroy {
     this.mpError.set('');
     this.reservationService.createMpPreference(id).subscribe({
       next: result => { window.location.href = result.checkoutUrl; },
-      error: () => {
+      error: (e: { error?: { message?: string } }) => {
         this.mpLoading.set(false);
-        this.mpError.set('Error al conectar con Mercado Pago. Intentá de nuevo.');
+        this.mpError.set(e?.error?.message ?? 'Error al conectar con Mercado Pago. Intentá de nuevo.');
       },
     });
   }
@@ -1327,11 +1338,7 @@ export class RaffleDetail implements OnInit, OnDestroy {
       next: result => {
         this.reservationId.set(result.id);
         this.reservedAmount.set(result.totalAmount);
-        this.reservationSuccess.set(true);
         this.reserving.set(false);
-        this.mpLoading.set(false);
-        this.mpError.set('');
-        this.notifications.success('Reserva creada', 'Completá el pago para confirmarla.');
         this.numbers.update(numbers =>
           numbers.map(number =>
             this.selected().includes(number.number)
@@ -1340,6 +1347,13 @@ export class RaffleDetail implements OnInit, OnDestroy {
           )
         );
         this.selected.set([]);
+        this.reservationSuccess.set(true);
+
+        if (this.selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
+          this.payWithMercadoPago();
+        } else {
+          this.notifications.success('Reserva creada', 'Completá el pago para confirmarla.');
+        }
       },
       error: (e: { message: string }) => {
         this.reservationError.set(e.message ?? 'Error al crear la reserva');
