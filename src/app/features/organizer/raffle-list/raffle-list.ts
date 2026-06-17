@@ -232,6 +232,7 @@ type DialogType = 'cancel' | 'delete' | 'draw';
                   <app-raffle-actions-menu
                     [raffle]="r"
                     [isOpen]="openMenuId() === r.id"
+                    direction="up"
                     (toggled)="toggleMenu($event, r.id)"
                     (changed)="onRaffleChanged($event)"
                     (cancelRequested)="onCancelRequested(r)"

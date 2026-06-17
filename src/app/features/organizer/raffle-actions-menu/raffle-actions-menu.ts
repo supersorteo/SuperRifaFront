@@ -1,8 +1,6 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { RaffleService } from '../../../core/services/raffle.service';
 import { RaffleListItem } from '../../../core/models/raffle.models';
-
-interface MenuPos { top: string; bottom: string; right: string; origin: string; }
 
 @Component({
   selector: 'app-raffle-actions-menu',
@@ -18,7 +16,7 @@ interface MenuPos { top: string; bottom: string; right: string; origin: string; 
       </button>
 
       @if (isOpen()) {
-        <div class="action-menu" role="menu" [style]="menuStyle()">
+        <div class="action-menu" role="menu" [class.action-menu--down]="direction() === 'down'">
           @if (raffle().operationalStatus !== 'FINISHED') {
             <button class="action-item" role="menuitem"
                     (click)="$event.stopPropagation(); publish()"
@@ -60,6 +58,7 @@ interface MenuPos { top: string; bottom: string; right: string; origin: string; 
 export class RaffleActionsMenu {
   readonly raffle   = input.required<RaffleListItem>();
   readonly isOpen   = input.required<boolean>();
+  readonly direction = input<'up' | 'down'>('up');
 
   readonly toggled             = output<MouseEvent>();
   readonly changed             = output<RaffleListItem>();
@@ -69,24 +68,7 @@ export class RaffleActionsMenu {
 
   private readonly raffleService = inject(RaffleService);
 
-  private static readonly MENU_H = 240;
-  private readonly menuPos = signal<MenuPos>({ top: 'auto', bottom: 'auto', right: '0px', origin: 'bottom right' });
-
-  protected readonly menuStyle = computed(() => {
-    const { top, bottom, right, origin } = this.menuPos();
-    return `position:fixed;top:${top};bottom:${bottom};right:${right};z-index:1055;transform-origin:${origin}`;
-  });
-
   protected onToggle(e: MouseEvent): void {
-    if (!this.isOpen()) {
-      const btn = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const right = `${window.innerWidth - btn.right}px`;
-      const openDown = (window.innerHeight - btn.bottom) >= RaffleActionsMenu.MENU_H;
-      this.menuPos.set(openDown
-        ? { top: `${btn.bottom + 6}px`, bottom: 'auto', right, origin: 'top right' }
-        : { top: 'auto', bottom: `${window.innerHeight - btn.top + 6}px`, right, origin: 'bottom right' }
-      );
-    }
     this.toggled.emit(e);
   }
 

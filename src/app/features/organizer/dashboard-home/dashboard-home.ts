@@ -257,6 +257,7 @@ type DialogType = 'cancel' | 'delete' | 'draw';
                       <app-raffle-actions-menu
                         [raffle]="r"
                         [isOpen]="openMenuId() === r.id"
+                        [direction]="menuDirection($index, recentRaffles().length)"
                         (toggled)="toggleMenu($event, r.id)"
                         (changed)="onRaffleChanged($event)"
                         (cancelRequested)="onCancelRequested(r)"
@@ -555,6 +556,10 @@ export class DashboardHome implements OnInit, OnDestroy {
   protected soldPct(r: RaffleListItem): number {
     if (!r.totalNumbers) return 0;
     return Math.round(((r.reservedCount ?? 0) / r.totalNumbers) * 100);
+  }
+
+  protected menuDirection(index: number, total: number): 'up' | 'down' {
+    return index < Math.min(2, total - 1) ? 'down' : 'up';
   }
 
   protected avatarStyle(r: RaffleListItem): string {
