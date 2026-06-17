@@ -291,8 +291,69 @@ import { NotificationService } from '../../../core/services/notification.service
             <!-- Reserve card -->
             <div class="rd-reserve-card sticky-top" style="top:80px">
 
-              <!-- Empty state -->
-              @if (selected().length === 0) {
+              @if (reservationSuccess()) {
+                <div class="rd-success">
+                  <div class="rd-success__icon">
+                    <i class="bi bi-check-circle-fill"></i>
+                  </div>
+                  <div class="rd-success__title">¡Reserva creada!</div>
+                  <p class="rd-success__sub">
+                    Tu reserva vence en 30 minutos. Completá el pago para confirmarla.
+                  </p>
+                  <div class="rd-success__amount">{{ reservedAmount() | currencyAr }}</div>
+
+                  @if (selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
+                    @if (mpError()) {
+                      <div class="rd-alert rd-alert--danger mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>{{ mpError() }}
+                      </div>
+                    }
+                    <button type="button" class="rd-mp-pay-btn"
+                            (click)="payWithMercadoPago()"
+                            [disabled]="mpLoading()">
+                      @if (mpLoading()) {
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        Preparando pago...
+                      } @else {
+                        <i class="bi bi-credit-card-2-front-fill"></i>
+                        Pagar con Mercado Pago
+                      }
+                    </button>
+                    <p class="rd-success__hint">Serás redirigido a Mercado Pago para completar el pago de forma segura</p>
+                  } @else if (selectedPaymentMethod()) {
+                    <div class="rd-transfer-info">
+                      <div class="rd-transfer-info__name">
+                        <i [class]="'bi ' + pmIcon(selectedPaymentMethod()!.type)"></i>
+                        {{ selectedPaymentMethod()!.displayName }}
+                      </div>
+                      @if (selectedPaymentMethod()!.alias) {
+                        <div class="rd-transfer-info__row">
+                          <span>Alias</span><strong>{{ selectedPaymentMethod()!.alias }}</strong>
+                        </div>
+                      }
+                      @if (selectedPaymentMethod()!.cbuCvu) {
+                        <div class="rd-transfer-info__row">
+                          <span>CBU/CVU</span><strong>{{ selectedPaymentMethod()!.cbuCvu }}</strong>
+                        </div>
+                      }
+                      @if (selectedPaymentMethod()!.accountHolder) {
+                        <div class="rd-transfer-info__row">
+                          <span>Titular</span><span>{{ selectedPaymentMethod()!.accountHolder }}</span>
+                        </div>
+                      }
+                      @if (selectedPaymentMethod()!.instructions) {
+                        <div class="rd-transfer-info__note">
+                          <i class="bi bi-chat-left-text me-1"></i>{{ selectedPaymentMethod()!.instructions }}
+                        </div>
+                      }
+                    </div>
+                    <p class="rd-success__hint">Avisá al organizador cuando hayas realizado el pago</p>
+                  } @else {
+                    <p class="rd-success__hint">Contactá al organizador para coordinar el pago.</p>
+                  }
+                </div>
+
+              } @else if (selected().length === 0) {
                 <div class="rd-reserve-card__empty">
                   <div class="rd-reserve-card__empty-icon">
                     <i class="bi bi-hand-index-thumb-fill"></i>
@@ -302,194 +363,126 @@ import { NotificationService } from '../../../core/services/notification.service
                     Tocá cualquier número disponible en la grilla para agregarlo a tu reserva
                   </div>
                 </div>
-              }
 
-              <!-- Form -->
-              @if (selected().length > 0) {
-
-                <!-- Success -->
-                @if (reservationSuccess()) {
-                  <div class="rd-success">
-                    <div class="rd-success__icon">
-                      <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                    <div class="rd-success__title">¡Reserva creada!</div>
-                    <p class="rd-success__sub">
-                      Tu reserva vence en 30 minutos. Completá el pago para confirmarla.
-                    </p>
-                    <div class="rd-success__amount">{{ reservedAmount() | currencyAr }}</div>
-
-                    @if (selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
-                      @if (mpError()) {
-                        <div class="rd-alert rd-alert--danger mb-3" role="alert">
-                          <i class="bi bi-exclamation-triangle-fill"></i>{{ mpError() }}
-                        </div>
-                      }
-                      <button type="button" class="rd-mp-pay-btn"
-                              (click)="payWithMercadoPago()"
-                              [disabled]="mpLoading()">
-                        @if (mpLoading()) {
-                          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                          Preparando pago...
-                        } @else {
-                          <i class="bi bi-credit-card-2-front-fill"></i>
-                          Pagar con Mercado Pago
-                        }
-                      </button>
-                      <p class="rd-success__hint">Serás redirigido a Mercado Pago para completar el pago de forma segura</p>
-                    } @else if (selectedPaymentMethod()) {
-                      <div class="rd-transfer-info">
-                        <div class="rd-transfer-info__name">
-                          <i [class]="'bi ' + pmIcon(selectedPaymentMethod()!.type)"></i>
-                          {{ selectedPaymentMethod()!.displayName }}
-                        </div>
-                        @if (selectedPaymentMethod()!.alias) {
-                          <div class="rd-transfer-info__row">
-                            <span>Alias</span><strong>{{ selectedPaymentMethod()!.alias }}</strong>
-                          </div>
-                        }
-                        @if (selectedPaymentMethod()!.cbuCvu) {
-                          <div class="rd-transfer-info__row">
-                            <span>CBU/CVU</span><strong>{{ selectedPaymentMethod()!.cbuCvu }}</strong>
-                          </div>
-                        }
-                        @if (selectedPaymentMethod()!.accountHolder) {
-                          <div class="rd-transfer-info__row">
-                            <span>Titular</span><span>{{ selectedPaymentMethod()!.accountHolder }}</span>
-                          </div>
-                        }
-                        @if (selectedPaymentMethod()!.instructions) {
-                          <div class="rd-transfer-info__note">
-                            <i class="bi bi-chat-left-text me-1"></i>{{ selectedPaymentMethod()!.instructions }}
-                          </div>
-                        }
-                      </div>
-                      <p class="rd-success__hint">Avisá al organizador cuando hayas realizado el pago</p>
-                    } @else {
-                      <p class="rd-success__hint">Contactá al organizador para coordinar el pago.</p>
+              } @else {
+                <!-- Selection summary -->
+                <div class="rd-summary">
+                  <div class="rd-summary__label">Tus números</div>
+                  <div class="d-flex flex-wrap gap-1 mb-3">
+                    @for (n of selected(); track n) {
+                      <span class="rd-num-chip rd-num-chip--lg">{{ n }}</span>
                     }
                   </div>
-                } @else {
+                  <div class="d-flex justify-content-between align-items-baseline">
+                    <span class="rd-summary__sub">Total a pagar</span>
+                    <span class="rd-summary__price text-gradient">{{ totalPrice() | currencyAr }}</span>
+                  </div>
+                </div>
 
-                  <!-- Selection summary -->
-                  <div class="rd-summary">
-                    <div class="rd-summary__label">Tus números</div>
-                    <div class="d-flex flex-wrap gap-1 mb-3">
-                      @for (n of selected(); track n) {
-                        <span class="rd-num-chip rd-num-chip--lg">{{ n }}</span>
-                      }
+                <!-- Error alert -->
+                @if (reservationError()) {
+                  <div class="rd-alert rd-alert--danger mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {{ reservationError() }}
+                  </div>
+                }
+
+                <form [formGroup]="reserveForm" (ngSubmit)="submitReservation()">
+                  <div formGroupName="participant" class="rd-form-section">
+                    <div class="rd-form-section__title">Tus datos</div>
+
+                    <div class="mb-3">
+                      <label class="rd-label" for="fullName">Nombre completo *</label>
+                      <input id="fullName" type="text" class="form-control"
+                             formControlName="fullName" autocomplete="name"
+                             placeholder="Juan Pérez"
+                             [class.is-invalid]="rtouched('fullName') && reserveForm.get('participant.fullName')?.invalid">
+                      <div class="invalid-feedback">Requerido</div>
                     </div>
-                    <div class="d-flex justify-content-between align-items-baseline">
-                      <span class="rd-summary__sub">Total a pagar</span>
-                      <span class="rd-summary__price text-gradient">{{ totalPrice() | currencyAr }}</span>
+
+                    <div class="mb-3">
+                      <label class="rd-label" for="rPhone">
+                        <i class="bi bi-whatsapp text-success me-1"></i>Teléfono / WhatsApp *
+                      </label>
+                      <input id="rPhone" type="tel" class="form-control"
+                             formControlName="phone" autocomplete="tel"
+                             placeholder="+54 9 11 1234-5678"
+                             [class.is-invalid]="rtouched('phone') && reserveForm.get('participant.phone')?.invalid">
+                      <div class="invalid-feedback">Requerido</div>
+                    </div>
+
+                    <div class="mb-2">
+                      <label class="rd-label" for="rEmail">Email <span class="rd-label--opt">(opcional)</span></label>
+                      <input id="rEmail" type="email" class="form-control"
+                             formControlName="email" autocomplete="email"
+                             placeholder="juan@email.com">
                     </div>
                   </div>
 
-                  <!-- Error alert -->
-                  @if (reservationError()) {
-                    <div class="rd-alert rd-alert--danger mb-3" role="alert">
-                      <i class="bi bi-exclamation-triangle-fill"></i>
-                      {{ reservationError() }}
+                  <!-- Access code -->
+                  <div class="rd-form-section">
+                    <div class="rd-form-section__title">Código de acceso</div>
+                    <label class="rd-label" for="accessCode">Código del organizador</label>
+                    <input id="accessCode" type="text" class="form-control"
+                           formControlName="accessCode"
+                           placeholder="Ej: RIFA-123456"
+                           [class.is-invalid]="reserveForm.get('accessCode')?.touched && reserveForm.get('accessCode')?.invalid">
+                    <div class="form-text mt-1" style="font-size:.78rem">
+                      <i class="bi bi-info-circle me-1 text-primary"></i>
+                      El organizador te lo comparte por WhatsApp o redes
+                    </div>
+                  </div>
+
+                  <!-- Payment methods -->
+                  @if (raffle()!.paymentMethods.length > 0) {
+                    <div class="rd-form-section">
+                      <div class="rd-form-section__title">Método de pago</div>
+                      @for (pm of raffle()!.paymentMethods; track pm.displayName) {
+                        <div class="rd-pm-card"
+                             [class.rd-pm-card--active]="selectedPaymentMethod()?.displayName === pm.displayName"
+                             (click)="selectedPaymentMethod.set(pm)"
+                             role="radio"
+                             [attr.aria-checked]="selectedPaymentMethod()?.displayName === pm.displayName"
+                             tabindex="0"
+                             (keydown.enter)="selectedPaymentMethod.set(pm)"
+                             (keydown.space)="selectedPaymentMethod.set(pm)">
+                          <div class="rd-pm-card__head">
+                            <i class="bi" [class]="pmIcon(pm.type)" style="font-size:1.1rem"></i>
+                            <span class="fw-semibold">{{ pm.displayName }}</span>
+                            <i class="bi bi-check-circle-fill rd-pm-card__check ms-auto"></i>
+                          </div>
+                          @if (pm.alias) {
+                            <div class="rd-pm-card__detail">Alias: <strong>{{ pm.alias }}</strong></div>
+                          }
+                          @if (pm.cbuCvu) {
+                            <div class="rd-pm-card__detail">CBU/CVU: {{ pm.cbuCvu }}</div>
+                          }
+                          @if (pm.accountHolder) {
+                            <div class="rd-pm-card__detail">Titular: {{ pm.accountHolder }}</div>
+                          }
+                          @if (pm.instructions) {
+                            <div class="rd-pm-card__detail rd-pm-card__detail--note">
+                              <i class="bi bi-chat-left-text me-1"></i>{{ pm.instructions }}
+                            </div>
+                          }
+                        </div>
+                      }
                     </div>
                   }
 
-                  <form [formGroup]="reserveForm" (ngSubmit)="submitReservation()">
-                    <div formGroupName="participant" class="rd-form-section">
-                      <div class="rd-form-section__title">Tus datos</div>
-
-                      <div class="mb-3">
-                        <label class="rd-label" for="fullName">Nombre completo *</label>
-                        <input id="fullName" type="text" class="form-control"
-                               formControlName="fullName" autocomplete="name"
-                               placeholder="Juan Pérez"
-                               [class.is-invalid]="rtouched('fullName') && reserveForm.get('participant.fullName')?.invalid">
-                        <div class="invalid-feedback">Requerido</div>
-                      </div>
-
-                      <div class="mb-3">
-                        <label class="rd-label" for="rPhone">
-                          <i class="bi bi-whatsapp text-success me-1"></i>Teléfono / WhatsApp *
-                        </label>
-                        <input id="rPhone" type="tel" class="form-control"
-                               formControlName="phone" autocomplete="tel"
-                               placeholder="+54 9 11 1234-5678"
-                               [class.is-invalid]="rtouched('phone') && reserveForm.get('participant.phone')?.invalid">
-                        <div class="invalid-feedback">Requerido</div>
-                      </div>
-
-                      <div class="mb-2">
-                        <label class="rd-label" for="rEmail">Email <span class="rd-label--opt">(opcional)</span></label>
-                        <input id="rEmail" type="email" class="form-control"
-                               formControlName="email" autocomplete="email"
-                               placeholder="juan@email.com">
-                      </div>
-                    </div>
-
-                    <!-- Access code -->
-                    <div class="rd-form-section">
-                      <div class="rd-form-section__title">Código de acceso</div>
-                      <label class="rd-label" for="accessCode">Código del organizador</label>
-                      <input id="accessCode" type="text" class="form-control"
-                             formControlName="accessCode"
-                             placeholder="Ej: RIFA-123456"
-                             [class.is-invalid]="reserveForm.get('accessCode')?.touched && reserveForm.get('accessCode')?.invalid">
-                      <div class="form-text mt-1" style="font-size:.78rem">
-                        <i class="bi bi-info-circle me-1 text-primary"></i>
-                        El organizador te lo comparte por WhatsApp o redes
-                      </div>
-                    </div>
-
-                    <!-- Payment methods -->
-                    @if (raffle()!.paymentMethods.length > 0) {
-                      <div class="rd-form-section">
-                        <div class="rd-form-section__title">Método de pago</div>
-                        @for (pm of raffle()!.paymentMethods; track pm.displayName) {
-                          <div class="rd-pm-card"
-                               [class.rd-pm-card--active]="selectedPaymentMethod()?.displayName === pm.displayName"
-                               (click)="selectedPaymentMethod.set(pm)"
-                               role="radio"
-                               [attr.aria-checked]="selectedPaymentMethod()?.displayName === pm.displayName"
-                               tabindex="0"
-                               (keydown.enter)="selectedPaymentMethod.set(pm)"
-                               (keydown.space)="selectedPaymentMethod.set(pm)">
-                            <div class="rd-pm-card__head">
-                              <i class="bi" [class]="pmIcon(pm.type)" style="font-size:1.1rem"></i>
-                              <span class="fw-semibold">{{ pm.displayName }}</span>
-                              <i class="bi bi-check-circle-fill rd-pm-card__check ms-auto"></i>
-                            </div>
-                            @if (pm.alias) {
-                              <div class="rd-pm-card__detail">Alias: <strong>{{ pm.alias }}</strong></div>
-                            }
-                            @if (pm.cbuCvu) {
-                              <div class="rd-pm-card__detail">CBU/CVU: {{ pm.cbuCvu }}</div>
-                            }
-                            @if (pm.accountHolder) {
-                              <div class="rd-pm-card__detail">Titular: {{ pm.accountHolder }}</div>
-                            }
-                            @if (pm.instructions) {
-                              <div class="rd-pm-card__detail rd-pm-card__detail--note">
-                                <i class="bi bi-chat-left-text me-1"></i>{{ pm.instructions }}
-                              </div>
-                            }
-                          </div>
-                        }
-                      </div>
+                  <!-- Submit -->
+                  <button type="submit"
+                          class="btn btn-gradient w-100 py-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2"
+                          style="font-size:1rem"
+                          [disabled]="reserving() || raffle()!.operationalStatus === 'EXECUTING' || raffle()!.operationalStatus === 'FINISHED'">
+                    @if (reserving()) {
+                      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                      Reservando...
+                    } @else {
+                      <i class="bi bi-lock-fill"></i>Reservar {{ selected().length }} número{{ selected().length !== 1 ? 's' : '' }}
                     }
-
-                    <!-- Submit -->
-                    <button type="submit"
-                            class="btn btn-gradient w-100 py-3 fw-bold rounded-3 d-flex align-items-center justify-content-center gap-2"
-                            style="font-size:1rem"
-                            [disabled]="reserving() || raffle()!.operationalStatus === 'EXECUTING' || raffle()!.operationalStatus === 'FINISHED'">
-                      @if (reserving()) {
-                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                        Reservando...
-                      } @else {
-                        <i class="bi bi-lock-fill"></i>Reservar {{ selected().length }} número{{ selected().length !== 1 ? 's' : '' }}
-                      }
-                    </button>
-                  </form>
-                }
+                  </button>
+                </form>
               }
             </div>
 

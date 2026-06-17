@@ -139,8 +139,9 @@ import { PaymentMethod, PaymentMethodRequest, PaymentMethodType } from '../../..
                 <div class="fw-bold">{{ m.displayName }}</div>
                 <div class="small text-muted">{{ typeLabel(m.type) }}</div>
                 @if (m.type === 'MERCADO_PAGO') {
-                  <div class="small" style="color:#10b981">
-                    <i class="bi bi-shield-lock-fill me-1"></i>Token configurado
+                  <div class="small" [style.color]="m.hasIntegrationToken ? '#10b981' : '#ef4444'">
+                    <i [class]="'bi me-1 ' + (m.hasIntegrationToken ? 'bi-shield-lock-fill' : 'bi-shield-exclamation-fill')"></i>
+                    {{ m.hasIntegrationToken ? 'Token configurado' : 'Sin token — MP no funcionará' }}
                   </div>
                 }
                 @if (m.alias) {

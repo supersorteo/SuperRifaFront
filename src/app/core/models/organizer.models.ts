@@ -33,6 +33,7 @@ export interface PaymentMethod {
   active: boolean;
   publicVisible: boolean;
   displayOrder: number;
+  hasIntegrationToken?: boolean;
 }
 
 export interface PaymentMethodRequest {
