@@ -12,23 +12,23 @@ import { ConfirmDialog, ConfirmDialogItem } from '../../../shared/components/con
 import { NotificationService } from '../../../core/services/notification.service';
 
 type StatusFilter = ReservationStatus | 'ALL';
-type ReservationAction = 'confirm' | 'cancel' | null;
+type ReservationAction = 'confirm' | 'cancel' | 'delete' | null;
 
 @Component({
   selector: 'app-reservations-dashboard',
   imports: [CurrencyArPipe, StatusBadge, ConfirmDialog],
   template: `
     <app-confirm-dialog
-      [open]="pendingAction() === 'confirm' && selectedReservation() !== null"
-      [title]="pendingAction() === 'confirm' ? 'Confirmar reserva' : 'Cancelar reserva'"
+      [open]="pendingAction() !== null && selectedReservation() !== null"
+      [title]="pendingAction() === 'confirm' ? 'Confirmar reserva' : pendingAction() === 'cancel' ? 'Cancelar reserva' : 'Eliminar reserva'"
       [body]="dialogBody()"
-      [icon]="pendingAction() === 'confirm' ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"
+      [icon]="pendingAction() === 'confirm' ? 'bi bi-check-circle-fill' : pendingAction() === 'delete' ? 'bi bi-trash-fill' : 'bi bi-x-circle-fill'"
       [tone]="pendingAction() === 'confirm' ? 'info' : 'danger'"
-      [confirmLabel]="pendingAction() === 'confirm' ? 'Confirmar pago' : 'Cancelar reserva'"
+      [confirmLabel]="pendingAction() === 'confirm' ? 'Confirmar pago' : pendingAction() === 'cancel' ? 'Cancelar reserva' : 'Eliminar'"
       [busy]="actionLoading() === selectedReservation()?.id"
-      [items]="pendingAction() === 'confirm' ? confirmItems() : cancelItems()"
+      [items]="pendingAction() === 'confirm' ? confirmItems() : pendingAction() === 'cancel' ? cancelItems() : deleteItems()"
       (cancelled)="closeDialog()"
-      (confirmed)="pendingAction() === 'confirm' ? confirmSelected() : cancelSelected()" />
+      (confirmed)="pendingAction() === 'confirm' ? confirmSelected() : pendingAction() === 'cancel' ? cancelSelected() : deleteSelected()" />
 
     <!-- Header -->
     <div class="rd-header">
@@ -179,8 +179,8 @@ type ReservationAction = 'confirm' | 'cancel' | null;
                   </td>
 
                   <td class="pe-3">
-                    @if (r.status === 'PENDING') {
-                      <div class="d-flex justify-content-end gap-1">
+                    <div class="d-flex justify-content-end gap-1">
+                      @if (r.status === 'PENDING') {
                         <button class="rd-action-btn rd-action-btn--confirm"
                                 [disabled]="actionLoading() === r.id"
                                 (click)="confirm(r)"
@@ -199,8 +199,15 @@ type ReservationAction = 'confirm' | 'cancel' | null;
                                 aria-label="Cancelar reserva">
                           <i class="bi bi-x-lg"></i>
                         </button>
-                      </div>
-                    }
+                      }
+                      <button class="rd-action-btn rd-action-btn--delete"
+                              [disabled]="actionLoading() === r.id"
+                              (click)="delete(r)"
+                              title="Eliminar reserva"
+                              aria-label="Eliminar reserva">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }
@@ -391,6 +398,10 @@ type ReservationAction = 'confirm' | 'cancel' | null;
         background: #fff1f2; color: #be123c;
         &:not(:disabled):hover { background: #ffe4e6; color: #9f1239; }
       }
+      &--delete {
+        background: #fef2f2; color: #991b1b;
+        &:not(:disabled):hover { background: #fee2e2; color: #7f1d1d; }
+      }
     }
 
     /* Pagination */
@@ -516,6 +527,11 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
     this.pendingAction.set('cancel');
   }
 
+  protected delete(reservation: OrganizerReservation): void {
+    this.selectedReservation.set(reservation);
+    this.pendingAction.set('delete');
+  }
+
   protected prevPage(): void {
     this.page.update(current => current - 1);
     this.load();
@@ -566,6 +582,8 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
     if (!r) return '';
     if (this.pendingAction() === 'confirm')
       return `Se confirmará la reserva de ${r.participantName} en la rifa "${r.raffleTitle}".`;
+    if (this.pendingAction() === 'delete')
+      return `Se eliminará permanentemente la reserva de ${r.participantName}. Los números quedarán disponibles.`;
     return `Se cancelará la reserva de ${r.participantName} y sus números volverán a quedar disponibles.`;
   }
 
@@ -636,6 +654,17 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
     ];
   }
 
+  protected deleteItems(): ConfirmDialogItem[] {
+    const reservation = this.selectedReservation();
+    if (!reservation) return [];
+
+    return [
+      { icon: 'bi bi-person-fill', color: '#6366f1', text: reservation.participantName },
+      { icon: 'bi bi-hash', color: '#f59e0b', text: `Numeros: ${reservation.numbers.join(', ')}` },
+      { icon: 'bi bi-exclamation-triangle-fill', color: '#dc2626', text: 'Esta accion no se puede deshacer' },
+    ];
+  }
+
   protected confirmSelected(): void {
     const reservation = this.selectedReservation();
     if (!reservation) return;
@@ -668,6 +697,25 @@ export class ReservationsDashboard implements OnInit, OnDestroy {
       error: () => {
         this.actionLoading.set(null);
         this.notifications.error('No se pudo cancelar la reserva');
+      },
+    });
+  }
+
+  protected deleteSelected(): void {
+    const reservation = this.selectedReservation();
+    if (!reservation) return;
+
+    this.actionLoading.set(reservation.id);
+    this.reservationService.deleteReservation(reservation.id).subscribe({
+      next: () => {
+        this.reservations.update(list => list.filter(item => item.id !== reservation.id));
+        this.total.update(t => t - 1);
+        this.notifications.success('Reserva eliminada', `Se elimino la reserva de ${reservation.participantName}.`);
+        this.closeDialog();
+      },
+      error: () => {
+        this.actionLoading.set(null);
+        this.notifications.error('No se pudo eliminar la reserva');
       },
     });
   }

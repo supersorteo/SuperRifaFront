@@ -1,5 +1,4 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { RaffleService } from '../../../core/services/raffle.service';
 import { WebSocketService } from '../../../core/services/websocket.service';
@@ -17,7 +16,7 @@ type DialogType = 'cancel' | 'delete' | 'draw';
 
 @Component({
   selector: 'app-raffle-list',
-  imports: [RouterLink, CurrencyArPipe, ConfirmDialog, RaffleFormModal, RaffleActionsMenu, LiveDrawOverlay, WinnerReservationModal, StatusBadge],
+  imports: [CurrencyArPipe, ConfirmDialog, RaffleFormModal, RaffleActionsMenu, LiveDrawOverlay, WinnerReservationModal, StatusBadge],
   host: { '(document:click)': 'closeAllMenus()' },
   template: `
     <!-- ── Overlays & modals (fuera de cualquier card) ──────────────────── -->
@@ -225,7 +224,13 @@ type DialogType = 'cancel' | 'delete' | 'draw';
                   }
                 </div>
                 <div class="d-flex align-items-center gap-1">
-                  <a [routerLink]="['/rifa', r.slug]" target="_blank"
+                  <button type="button" class="rl-icon-btn"
+                          [title]="copiedLink() === r.id ? 'Enlace copiado' : 'Copiar enlace para participantes'"
+                          [attr.aria-label]="copiedLink() === r.id ? 'Enlace copiado' : 'Copiar enlace'"
+                          (click)="copyRaffleLink($event, r)">
+                    <i class="bi" [class]="copiedLink() === r.id ? 'bi-check2-circle text-success' : 'bi-link-45deg'"></i>
+                  </button>
+                  <a [href]="'/rifa/' + r.slug" target="_blank" rel="noopener noreferrer"
                      class="rl-icon-btn" title="Ver rifa pública" aria-label="Ver rifa">
                     <i class="bi bi-box-arrow-up-right"></i>
                   </a>
@@ -554,6 +559,7 @@ export class RaffleList implements OnInit, OnDestroy {
   protected readonly openMenuId = signal<string | null>(null);
   protected readonly activeImageIndex = signal<Record<string, number>>({});
   protected readonly copiedCode         = signal<string | null>(null);
+  protected readonly copiedLink         = signal<string | null>(null);
   protected readonly liveDrawOpen       = signal(false);
   protected readonly liveDrawRaffle     = signal<RaffleListItem | null>(null);
   protected readonly liveDrawCountdown  = signal<number | null>(null);
@@ -741,6 +747,15 @@ export class RaffleList implements OnInit, OnDestroy {
     if (!raffle.winnerPhone) return;
     this.winnerModalRaffle.set(raffle);
     this.winnerModalOpen.set(true);
+  }
+
+  protected copyRaffleLink(event: MouseEvent, r: RaffleListItem): void {
+    event.stopPropagation();
+    const url = `${window.location.origin}/rifa/${r.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      this.copiedLink.set(r.id);
+      setTimeout(() => this.copiedLink.set(null), 1800);
+    }).catch(() => {});
   }
 
   protected copyAccessCode(event: MouseEvent, r: RaffleListItem): void {

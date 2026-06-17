@@ -258,6 +258,7 @@ type DialogType = 'cancel' | 'delete' | 'draw';
                         [raffle]="r"
                         [isOpen]="openMenuId() === r.id"
                         [direction]="menuDirection($index, recentRaffles().length)"
+                        [fixedMenu]="true"
                         (toggled)="toggleMenu($event, r.id)"
                         (changed)="onRaffleChanged($event)"
                         (cancelRequested)="onCancelRequested(r)"

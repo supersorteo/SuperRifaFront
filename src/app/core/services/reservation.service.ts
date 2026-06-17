@@ -34,6 +34,10 @@ export class ReservationService {
     return this.http.put<OrganizerReservation>(`${environment.apiUrl}/organizer/reservations/${id}/cancel`, {});
   }
 
+  deleteReservation(id: string) {
+    return this.http.delete<void>(`${environment.apiUrl}/organizer/reservations/${id}`);
+  }
+
   createMpPreference(reservationId: string) {
     return this.http.post<{ preferenceId: string; checkoutUrl: string }>(
       `${environment.apiUrl}/public/reservations/${reservationId}/preference`, {}

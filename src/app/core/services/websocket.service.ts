@@ -20,10 +20,13 @@ export class WebSocketService {
       // sockjs-client still expects a Node-style global in some bundling paths
       (globalThis as typeof globalThis & { global?: typeof globalThis }).global ??= globalThis;
 
-      return import('sockjs-client').then(({ default: SockJS }) => {
+      return import('sockjs-client').then((sockJsMod) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const SockJS = (sockJsMod as any).default ?? sockJsMod;
         return new Promise<void>((resolve, reject) => {
           const client = new Client({
-            webSocketFactory: () => new SockJS(environment.wsUrl),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            webSocketFactory: () => new (SockJS as any)(environment.wsUrl),
             reconnectDelay: 5000,
             onConnect: () => resolve(),
             onStompError: () => reject(new Error('No se pudo establecer el canal en tiempo real')),

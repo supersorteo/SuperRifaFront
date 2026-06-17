@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: '/api',
-  wsUrl: '/ws',
+  apiUrl: 'https://superrifaback-production.up.railway.app/api',
+  wsUrl: 'wss://superrifaback-production.up.railway.app/ws',
 };

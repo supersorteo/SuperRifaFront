@@ -1,4 +1,4 @@
-import { Component, inject, input, output } from '@angular/core';
+import { Component, inject, input, output, signal } from '@angular/core';
 import { RaffleService } from '../../../core/services/raffle.service';
 import { RaffleListItem } from '../../../core/models/raffle.models';
 
@@ -16,7 +16,12 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
       </button>
 
       @if (isOpen()) {
-        <div class="action-menu" role="menu" [class.action-menu--down]="direction() === 'down'">
+        <div class="action-menu" role="menu"
+             [class.action-menu--down]="direction() === 'down'"
+             [class.action-menu--fixed]="fixedMenu()"
+             [style.top]="fixedMenu() ? fixedPos().top : null"
+             [style.bottom]="fixedMenu() ? fixedPos().bottom : null"
+             [style.right]="fixedMenu() ? fixedPos().right : null">
           @if (raffle().operationalStatus !== 'FINISHED') {
             <button class="action-item" role="menuitem"
                     (click)="$event.stopPropagation(); publish()"
@@ -56,19 +61,33 @@ import { RaffleListItem } from '../../../core/models/raffle.models';
   `
 })
 export class RaffleActionsMenu {
-  readonly raffle   = input.required<RaffleListItem>();
-  readonly isOpen   = input.required<boolean>();
+  readonly raffle    = input.required<RaffleListItem>();
+  readonly isOpen    = input.required<boolean>();
   readonly direction = input<'up' | 'down'>('up');
+  readonly fixedMenu = input(false);
 
-  readonly toggled             = output<MouseEvent>();
-  readonly changed             = output<RaffleListItem>();
-  readonly cancelRequested     = output<void>();
-  readonly deleteRequested     = output<void>();
+  readonly toggled              = output<MouseEvent>();
+  readonly changed              = output<RaffleListItem>();
+  readonly cancelRequested      = output<void>();
+  readonly deleteRequested      = output<void>();
   readonly drawConfirmRequested = output<void>();
+
+  protected readonly fixedPos = signal<{ top: string; bottom: string; right: string }>(
+    { top: 'auto', bottom: 'auto', right: '0px' }
+  );
 
   private readonly raffleService = inject(RaffleService);
 
   protected onToggle(e: MouseEvent): void {
+    if (this.fixedMenu() && !this.isOpen()) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const right = `${window.innerWidth - rect.right}px`;
+      if (this.direction() === 'down') {
+        this.fixedPos.set({ top: `${rect.bottom + 8}px`, bottom: 'auto', right });
+      } else {
+        this.fixedPos.set({ top: 'auto', bottom: `${window.innerHeight - rect.top + 8}px`, right });
+      }
+    }
     this.toggled.emit(e);
   }
 

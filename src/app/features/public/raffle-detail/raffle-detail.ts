@@ -1143,9 +1143,26 @@ export class RaffleDetail implements OnInit, OnDestroy {
         this.loadNumbers(slug);
         this.connectWebSocket(raffle.id);
         this.startSlideTimer();
+        this.handlePaymentReturn();
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  private handlePaymentReturn(): void {
+    const pago = this.route.snapshot.queryParamMap.get('pago');
+    if (!pago) return;
+    switch (pago) {
+      case 'exitoso':
+        this.notifications.success('¡Pago recibido!', 'Tu pago fue procesado. La confirmación llegará en breve.');
+        break;
+      case 'pendiente':
+        this.notifications.info('Pago pendiente', 'Tu pago está siendo procesado. Te avisaremos cuando se confirme.');
+        break;
+      case 'fallido':
+        this.notifications.error('Pago fallido', 'El pago no pudo completarse. Podés intentarlo de nuevo.');
+        break;
+    }
   }
 
   ngOnDestroy(): void {
