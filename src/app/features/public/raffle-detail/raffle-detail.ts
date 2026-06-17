@@ -9,7 +9,7 @@ import { RaffleService } from '../../../core/services/raffle.service';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { WebSocketService } from '../../../core/services/websocket.service';
 import { CurrencyArPipe } from '../../../shared/pipes/currency-ar.pipe';
-import { NumberInfo, NumberStatus, RafflePublicResponse } from '../../../core/models/raffle.models';
+import { NumberInfo, NumberStatus, PaymentMethodPublicInfo, RafflePublicResponse } from '../../../core/models/raffle.models';
 import { LiveDrawOverlay } from '../../../shared/components/live-draw-overlay/live-draw-overlay';
 import { NotificationService } from '../../../core/services/notification.service';
 
@@ -315,8 +315,59 @@ import { NotificationService } from '../../../core/services/notification.service
                     </div>
                     <div class="rd-success__title">¡Reserva creada!</div>
                     <p class="rd-success__sub">
-                      Tu reserva expira en 30 minutos. Contactá al organizador para confirmar el pago.
+                      Tu reserva vence en 30 minutos. Completá el pago para confirmarla.
                     </p>
+                    <div class="rd-success__amount">{{ reservedAmount() | currencyAr }}</div>
+
+                    @if (selectedPaymentMethod()?.type === 'MERCADO_PAGO') {
+                      @if (mpError()) {
+                        <div class="rd-alert rd-alert--danger mb-3" role="alert">
+                          <i class="bi bi-exclamation-triangle-fill"></i>{{ mpError() }}
+                        </div>
+                      }
+                      <button type="button" class="rd-mp-pay-btn"
+                              (click)="payWithMercadoPago()"
+                              [disabled]="mpLoading()">
+                        @if (mpLoading()) {
+                          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                          Preparando pago...
+                        } @else {
+                          <i class="bi bi-credit-card-2-front-fill"></i>
+                          Pagar con Mercado Pago
+                        }
+                      </button>
+                      <p class="rd-success__hint">Serás redirigido a Mercado Pago para completar el pago de forma segura</p>
+                    } @else if (selectedPaymentMethod()) {
+                      <div class="rd-transfer-info">
+                        <div class="rd-transfer-info__name">
+                          <i [class]="'bi ' + pmIcon(selectedPaymentMethod()!.type)"></i>
+                          {{ selectedPaymentMethod()!.displayName }}
+                        </div>
+                        @if (selectedPaymentMethod()!.alias) {
+                          <div class="rd-transfer-info__row">
+                            <span>Alias</span><strong>{{ selectedPaymentMethod()!.alias }}</strong>
+                          </div>
+                        }
+                        @if (selectedPaymentMethod()!.cbuCvu) {
+                          <div class="rd-transfer-info__row">
+                            <span>CBU/CVU</span><strong>{{ selectedPaymentMethod()!.cbuCvu }}</strong>
+                          </div>
+                        }
+                        @if (selectedPaymentMethod()!.accountHolder) {
+                          <div class="rd-transfer-info__row">
+                            <span>Titular</span><span>{{ selectedPaymentMethod()!.accountHolder }}</span>
+                          </div>
+                        }
+                        @if (selectedPaymentMethod()!.instructions) {
+                          <div class="rd-transfer-info__note">
+                            <i class="bi bi-chat-left-text me-1"></i>{{ selectedPaymentMethod()!.instructions }}
+                          </div>
+                        }
+                      </div>
+                      <p class="rd-success__hint">Avisá al organizador cuando hayas realizado el pago</p>
+                    } @else {
+                      <p class="rd-success__hint">Contactá al organizador para coordinar el pago.</p>
+                    }
                   </div>
                 } @else {
 
@@ -394,13 +445,13 @@ import { NotificationService } from '../../../core/services/notification.service
                         <div class="rd-form-section__title">Método de pago</div>
                         @for (pm of raffle()!.paymentMethods; track pm.displayName) {
                           <div class="rd-pm-card"
-                               [class.rd-pm-card--active]="selectedPaymentMethod() === pm.displayName"
-                               (click)="selectedPaymentMethod.set(pm.displayName)"
+                               [class.rd-pm-card--active]="selectedPaymentMethod()?.displayName === pm.displayName"
+                               (click)="selectedPaymentMethod.set(pm)"
                                role="radio"
-                               [attr.aria-checked]="selectedPaymentMethod() === pm.displayName"
+                               [attr.aria-checked]="selectedPaymentMethod()?.displayName === pm.displayName"
                                tabindex="0"
-                               (keydown.enter)="selectedPaymentMethod.set(pm.displayName)"
-                               (keydown.space)="selectedPaymentMethod.set(pm.displayName)">
+                               (keydown.enter)="selectedPaymentMethod.set(pm)"
+                               (keydown.space)="selectedPaymentMethod.set(pm)">
                             <div class="rd-pm-card__head">
                               <i class="bi" [class]="pmIcon(pm.type)" style="font-size:1.1rem"></i>
                               <span class="fw-semibold">{{ pm.displayName }}</span>
@@ -424,71 +475,6 @@ import { NotificationService } from '../../../core/services/notification.service
                         }
                       </div>
                     }
-
-                    <!-- Payment form (mock checkout) -->
-                    <div formGroupName="payment" class="rd-form-section">
-                      <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div class="rd-form-section__title mb-0">Pago</div>
-                        <span class="badge rounded-pill fw-semibold"
-                              style="background:rgba(99,102,241,0.1);color:#6366f1;font-size:.7rem;border:1px solid rgba(99,102,241,0.15)">
-                          Simulación visual
-                        </span>
-                      </div>
-
-                      <!-- Mock MP card -->
-                      <div class="rd-mp-card mb-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                          <div>
-                            <div class="small opacity-75 mb-0">Mercado Pago</div>
-                            <div class="fw-bold">Pago online simulado</div>
-                          </div>
-                          <i class="bi bi-credit-card-2-front-fill" style="font-size:1.8rem;opacity:.9"></i>
-                        </div>
-                        <div class="small mt-2 opacity-65">
-                          Integración anticipada · No procesa cobros reales
-                        </div>
-                      </div>
-
-                      <div class="mb-2">
-                        <label class="rd-label">Canal de pago</label>
-                        <select class="form-select" formControlName="method">
-                          <option value="MERCADO_PAGO">Mercado Pago</option>
-                          <option value="TRANSFERENCIA">Transferencia bancaria</option>
-                          <option value="MANUAL">Pago manual / efectivo</option>
-                        </select>
-                      </div>
-
-                      <div class="mb-2">
-                        <label class="rd-label" for="payerName">
-                          Titular del pago <span class="rd-label--opt">(opcional)</span>
-                        </label>
-                        <input id="payerName" type="text" class="form-control"
-                               formControlName="payerName"
-                               placeholder="Nombre del titular">
-                      </div>
-
-                      <div class="mb-3">
-                        <label class="rd-label" for="payRef">
-                          Referencia / comprobante <span class="rd-label--opt">(opcional)</span>
-                        </label>
-                        <input id="payRef" type="text" class="form-control"
-                               formControlName="reference"
-                               placeholder="Operación, referencia o nota">
-                      </div>
-
-                      <div class="form-check mb-3">
-                        <input id="paidCheck" class="form-check-input" type="checkbox" formControlName="paid">
-                        <label class="form-check-label small fw-medium" for="paidCheck">
-                          Ya realicé o simulé el pago
-                        </label>
-                      </div>
-
-                      <button type="button"
-                              class="btn btn-sm rounded-pill fw-semibold px-3 mb-1"
-                              style="background:rgba(0,110,212,0.1);color:#006ed4;border:1px solid rgba(0,110,212,0.2)">
-                        <i class="bi bi-wallet2 me-1"></i>Pagar con Mercado Pago
-                      </button>
-                    </div>
 
                     <!-- Submit -->
                     <button type="submit"
@@ -1031,6 +1017,50 @@ import { NotificationService } from '../../../core/services/notification.service
     .rd-not-found__title { font-size: 1.5rem; font-weight: 800; color: #3f3f46; margin-bottom: .5rem; }
     .rd-not-found__sub   { color: #71717a; max-width: 360px; line-height: 1.6; }
 
+    /* ── Success extras ───────────────────────────── */
+    .rd-success__amount {
+      font-size: 1.8rem; font-weight: 900; letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin: .25rem 0 1rem;
+    }
+    .rd-success__hint {
+      color: #71717a; font-size: .78rem; text-align: center; margin-top: .75rem; margin-bottom: 0;
+    }
+
+    /* ── MP pay button ────────────────────────────── */
+    .rd-mp-pay-btn {
+      width: 100%; padding: .85rem; border: none; border-radius: .875rem;
+      background: linear-gradient(135deg, #009ee3 0%, #0068b5 100%);
+      color: #fff; font-weight: 800; font-size: .95rem;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      cursor: pointer; transition: transform .15s, box-shadow .2s;
+      box-shadow: 0 4px 18px rgba(0,110,212,.35);
+      margin-top: .5rem;
+    }
+    .rd-mp-pay-btn:hover:not(:disabled) {
+      transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,110,212,.5);
+    }
+    .rd-mp-pay-btn:disabled { opacity: .7; cursor: default; }
+
+    /* ── Transfer info card ───────────────────────── */
+    .rd-transfer-info {
+      background: #f3f4ff; border: 1.5px solid #c7d2fe; border-radius: .875rem;
+      padding: .9rem 1rem; margin-top: .5rem; text-align: left;
+    }
+    .rd-transfer-info__name {
+      font-weight: 800; font-size: .88rem; color: #3f3f46;
+      display: flex; align-items: center; gap: .4rem; margin-bottom: .6rem;
+    }
+    .rd-transfer-info__row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      color: #52525b; font-size: .8rem; padding: .22rem 0;
+      border-bottom: 1px solid #e0e3ff;
+    }
+    .rd-transfer-info__note {
+      color: #4338ca; font-size: .78rem; font-style: italic; margin-top: .5rem;
+    }
+
     /* ── Responsive ───────────────────────────────── */
     @media (max-width: 576px) {
       .rd-carousel__img { height: 280px; }
@@ -1056,7 +1086,11 @@ export class RaffleDetail implements OnInit, OnDestroy {
   protected readonly reserving = signal(false);
   protected readonly reservationSuccess = signal(false);
   protected readonly reservationError = signal('');
-  protected readonly selectedPaymentMethod = signal('');
+  protected readonly selectedPaymentMethod = signal<PaymentMethodPublicInfo | null>(null);
+  protected readonly reservationId = signal<string | null>(null);
+  protected readonly reservedAmount = signal(0);
+  protected readonly mpLoading = signal(false);
+  protected readonly mpError = signal('');
   protected readonly activeImg = signal(0);
   protected readonly liveCountdown = signal<number | null>(null);
   protected readonly liveWinnerNumber = signal<number | null>(null);
@@ -1088,12 +1122,6 @@ export class RaffleDetail implements OnInit, OnDestroy {
       email: [''],
     }),
     accessCode: ['', Validators.required],
-    payment: this.fb.group({
-      method: ['MERCADO_PAGO'],
-      payerName: [''],
-      reference: [''],
-      paid: [false],
-    }),
   });
 
   private wsSubs: Subscription[] = [];
@@ -1105,6 +1133,9 @@ export class RaffleDetail implements OnInit, OnDestroy {
       next: raffle => {
         this.raffle.set(raffle);
         this.loading.set(false);
+        if (raffle.paymentMethods.length > 0) {
+          this.selectedPaymentMethod.set(raffle.paymentMethods[0]);
+        }
         this.loadNumbers(slug);
         this.connectWebSocket(raffle.id);
         this.startSlideTimer();
@@ -1266,6 +1297,20 @@ export class RaffleDetail implements OnInit, OnDestroy {
     return classes[this.raffle()?.operationalStatus ?? ''] ?? 'badge bg-secondary';
   }
 
+  protected payWithMercadoPago(): void {
+    const id = this.reservationId();
+    if (!id) return;
+    this.mpLoading.set(true);
+    this.mpError.set('');
+    this.reservationService.createMpPreference(id).subscribe({
+      next: result => { window.location.href = result.checkoutUrl; },
+      error: () => {
+        this.mpLoading.set(false);
+        this.mpError.set('Error al conectar con Mercado Pago. Intentá de nuevo.');
+      },
+    });
+  }
+
   protected submitReservation(): void {
     this.reserveForm.markAllAsTouched();
     if (this.reserveForm.invalid || this.selected().length === 0) return;
@@ -1286,13 +1331,14 @@ export class RaffleDetail implements OnInit, OnDestroy {
       participant: { fullName: participant.fullName, phone: participant.phone, email: participant.email || undefined },
       accessCode,
     }).subscribe({
-      next: () => {
+      next: result => {
+        this.reservationId.set(result.id);
+        this.reservedAmount.set(result.totalAmount);
         this.reservationSuccess.set(true);
         this.reserving.set(false);
-        this.notifications.success(
-          'Reserva creada',
-          'Tu reserva expirará en 30 minutos si no se confirma el pago.'
-        );
+        this.mpLoading.set(false);
+        this.mpError.set('');
+        this.notifications.success('Reserva creada', 'Completá el pago para confirmarla.');
         this.numbers.update(numbers =>
           numbers.map(number =>
             this.selected().includes(number.number)

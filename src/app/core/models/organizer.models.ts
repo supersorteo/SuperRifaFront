@@ -45,4 +45,6 @@ export interface PaymentMethodRequest {
   instructions?: string;
   publicVisible: boolean;
   displayOrder?: number;
+  /** Solo para type=MERCADO_PAGO: access_token personal del organizer */
+  mpAccessToken?: string;
 }

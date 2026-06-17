@@ -39,7 +39,32 @@ import { PaymentMethod, PaymentMethodRequest, PaymentMethodType } from '../../..
                        maxlength="100" placeholder="Ej: Mercado Pago personal" required>
               </div>
 
-              @if (form.type === 'ALIAS_CBU' || form.type === 'TRANSFER' || form.type === 'MERCADO_PAGO') {
+              @if (form.type === 'MERCADO_PAGO') {
+                <div class="col-12">
+                  <label class="form-label fw-semibold small">
+                    Access Token de Mercado Pago
+                    @if (!editing()) { <span class="text-danger">*</span> }
+                  </label>
+                  <input class="form-control font-monospace"
+                         [(ngModel)]="form.mpAccessToken" name="mpAccessToken"
+                         [placeholder]="editing() ? 'Dejar vacío para mantener el token actual' : 'APP_USR-... o TEST-...'"
+                         autocomplete="off" spellcheck="false">
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Encontralo en
+                    <a href="https://www.mercadopago.com.ar/developers/panel/app" target="_blank" rel="noopener">
+                      mercadopago.com.ar → Tus aplicaciones → Credenciales
+                    </a>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-semibold small">Alias / CVU (opcional)</label>
+                  <input class="form-control" [(ngModel)]="form.alias" name="alias" maxlength="50"
+                         placeholder="Para mostrar a los participantes">
+                </div>
+              }
+
+              @if (form.type === 'ALIAS_CBU' || form.type === 'TRANSFER') {
                 <div class="col-12 col-sm-6">
                   <label class="form-label fw-semibold small">Alias</label>
                   <input class="form-control" [(ngModel)]="form.alias" name="alias" maxlength="50">
@@ -113,6 +138,11 @@ import { PaymentMethod, PaymentMethodRequest, PaymentMethodType } from '../../..
               <div class="flex-grow-1 min-width-0">
                 <div class="fw-bold">{{ m.displayName }}</div>
                 <div class="small text-muted">{{ typeLabel(m.type) }}</div>
+                @if (m.type === 'MERCADO_PAGO') {
+                  <div class="small" style="color:#10b981">
+                    <i class="bi bi-shield-lock-fill me-1"></i>Token configurado
+                  </div>
+                }
                 @if (m.alias) {
                   <div class="small text-muted"><i class="bi bi-tag me-1"></i>{{ m.alias }}</div>
                 }

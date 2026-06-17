@@ -34,6 +34,12 @@ export class ReservationService {
     return this.http.put<OrganizerReservation>(`${environment.apiUrl}/organizer/reservations/${id}/cancel`, {});
   }
 
+  createMpPreference(reservationId: string) {
+    return this.http.post<{ preferenceId: string; checkoutUrl: string }>(
+      `${environment.apiUrl}/public/reservations/${reservationId}/preference`, {}
+    );
+  }
+
   lookupReservations(phone: string, slug: string) {
     return this.http.get<ParticipantLookupResult>(`${environment.apiUrl}/public/reservations/lookup`, {
       params: { phone, slug }
